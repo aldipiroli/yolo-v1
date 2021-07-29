@@ -5,8 +5,11 @@ import random
 
 
 class YOLOv1(nn.Module):
-    def __init__(self):
+    def __init__(self, split_size, blocks_num, num_classes):
         super(YOLOv1, self).__init__()
+
+        self.S, self.B, self.C = split_size, blocks_num, num_classes
+
         self.conv_layer_1 = nn.Sequential(nn.Conv2d(3, 64, [7, 7], 2, 3), nn.MaxPool2d(2, 2))
         self.conv_layer_2 = nn.Sequential(nn.Conv2d(64, 192, [3, 3], 1, 1), nn.MaxPool2d(2, 2))
         self.conv_layer_3 = nn.Sequential(
@@ -51,8 +54,8 @@ class YOLOv1(nn.Module):
             nn.Conv2d(1024, 1024, [3, 3], 1, 1),
         )
 
-        self.fc_layer_1 = nn.Linear(50176, 4096)
-        self.fc_layer_2 = nn.Linear(4096, 1470)
+        self.fc_layer_1 = nn.Sequential(nn.Flatten(), nn.Linear(1024 * self.S * self.S, 4096))
+        self.fc_layer_2 = nn.Linear(4096, self.S * self.S * (self.B * 5 + self.C))
 
     def forward(self, x):
         y = self.conv_layer_1(x)
@@ -61,17 +64,18 @@ class YOLOv1(nn.Module):
         y = self.conv_layer_4(y)
         y = self.conv_layer_5(y)
         y = self.conv_layer_6(y)
-        y = self.fc_layer_1(torch.flatten(y))
+        y = self.fc_layer_1(y)
         y = self.fc_layer_2(y)
-        y = torch.reshape(y, (7, 7, 30))
+        y = torch.reshape(y, (-1, self.S, self.S, 30))
 
         return y
 
 
 if __name__ == "__main__":
-    nn = YOLOv1()
+    split_size, blocks_num, num_classes = 7, 2, 20
+    nn = YOLOv1(split_size, blocks_num, num_classes)
 
-    x = np.random.rand(1, 3, 448, 448)
+    x = np.random.rand(2, 3, 448, 448)
     x = torch.Tensor(x)
     y = nn(x)
     print("Input shape: ", x.shape)
