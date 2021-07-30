@@ -46,9 +46,9 @@ class TestLoss(unittest.TestCase):
                 for j in range(S):
                     if gt[i, j, 4] != -1:
                         rand_pr = random.uniform(0.0, 1.0)
-                        pr[i, j, :5] = gt[i, j, :] + random.uniform(0.0, err)
+                        pr[i, j, :5] = gt[i, j, :] + random.uniform(-err, err)
                         pr[i, j, 4] = int(pr[i, j, 4])
-                        pr[i, j, 5:] = gt[i, j, :] + random.uniform(0.0, err)
+                        pr[i, j, 5:] = gt[i, j, :] + random.uniform(-err, err)
                         pr[i, j, 9] = int(pr[i, j, 9])
         else:
             pr[2, 2, :5] = [0, 0, 70, 20, 10]

@@ -38,38 +38,38 @@ def IoU(gt_box, pr_box):
     pr_dx = np.absolute(pr_box[1][0] - pr_box[0][0])
     pr_dy = np.absolute(pr_box[3][1] - pr_box[0][1])
 
-    print("=" * 50)
     union = gt_dx * gt_dy + pr_dx * pr_dy - inter
 
-    print("GT BBox: \n", gt_box)
-    print("PR BBox: \n", pr_box)
-
-    print("GT dx %.2f, dy %.2f" % (gt_dx, gt_dy))
-    print("PR dx %.2f, dy %.2f" % (pr_dx, pr_dy))
-
-    print("Inter %.2f, dx %.2f, dy %.2f" % (inter, dx, dy))
-    print("x_list ", x_list, "y_list", y_list)
-
-    print("IoU: %.2f, Int: %.2f, Union: %.2f " % (inter / union, inter, union))
-    print("=" * 50)
     return inter / union
 
 
 def compute_loss(gt, pr, H=448, W=448, S=7):
+    lamb_obj = 5
+    lamb_noobj = 0.5
     for i in range(gt.shape[0]):
         for j in range(gt.shape[1]):
             x_ = H / S * i
             y_ = W / S * j
             if gt[i, j, 4] != -1:
+                loss = 0
                 gt_box = get_box_coord(gt[i, j]) + [x_, y_]
                 pr_box1 = get_box_coord(pr[i, j, :5]) + [x_, y_]
                 pr_box2 = get_box_coord(pr[i, j, 5:]) + [x_, y_]
                 iou_box_1 = IoU(gt_box, pr_box1)
-                # iou_box_2 = IoU(gt_box, pr_box2)
+                iou_box_2 = IoU(gt_box, pr_box2)
 
-                # pr_box, pr_idx = (pr_box1, 1) if iou_box_1 >= iou_box_2 else (pr_box2, 2)
-                # print("*"*20)
-                # print("GT BBox: \n", gt_box)
-                # print("PR BBox 1: \n", pr_box1)
-                # print("PR BBox 2: \n", pr_box2)
-                # print("IoU Box1: %.2f, Box2: %.2f, Taken %d" % (iou_box_1, iou_box_2, pr_idx))
+                box_idx = 1 if iou_box_1 >= iou_box_2 else 2
+                print("-" * 50)
+                print("IoU Box1: %.2f, Box2: %.2f, Taken %d" % (iou_box_1, iou_box_2, box_idx))
+
+                gt_ = gt[i, j]
+                if box_idx == 1:
+                    pr_ = pr[i, j, :5]
+                else:
+                    pr_ = pr[i, j, 5:]
+
+                # position
+                loss += lamb_obj * (np.square(gt_[0] - pr_[0]) + np.square(gt_[1] - pr_[1]))
+                # dimensions
+                loss += lamb_obj * (np.square(np.sqrt(gt_[2]) - np.sqrt(pr_[2])) + np.square(np.sqrt(gt_[3]) - np.sqrt(pr_[3])))
+                
