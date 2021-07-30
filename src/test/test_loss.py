@@ -2,12 +2,14 @@ import unittest
 import numpy as np
 import random
 from random import randrange
+import matplotlib.pyplot as plt
 
-from src.loss import *
-from src.utils.plot import *
+
+from src.loss import compute_loss
+from src.utils.plot import plot_boxes
+
 
 class TestLoss(unittest.TestCase):
-
     def make_gt(self, S=7, C=20, W=448, H=448, single_box=False):
         gt = np.zeros((S, S, 5))
 
@@ -44,28 +46,28 @@ class TestLoss(unittest.TestCase):
                 for j in range(S):
                     if gt[i, j, 4] != -1:
                         rand_pr = random.uniform(0.0, 1.0)
-                        if rand_pr > 0.3:
-                            pr[i, j, :5] = gt[i, j, :] + random.uniform(0.0, err)
-                            pr[i, j, 4] = int(pr[i, j, 4])
-                            pr[i, j, 5:] = gt[i, j, :] + random.uniform(0.0, err)
-                            pr[i, j, 9] = int(pr[i, j, 9])
+                        pr[i, j, :5] = gt[i, j, :] + random.uniform(0.0, err)
+                        pr[i, j, 4] = int(pr[i, j, 4])
+                        pr[i, j, 5:] = gt[i, j, :] + random.uniform(0.0, err)
+                        pr[i, j, 9] = int(pr[i, j, 9])
         else:
-            pr[2, 2, :5] = [0, 0, 105, 40, 10]
-            pr[2, 2, 5:] = [0, 0, 50, 99, 10]
+            pr[2, 2, :5] = [0, 0, 70, 20, 10]
+            pr[2, 2, 5:] = [0, 0, 20, 60, 10]
 
         return pr
 
     def test_loss(self):
         single_box = False
-        gt = self.make_gt(single_box=False)
-        pr = self.make_pr(gt, single_box=False)
+        gt = self.make_gt(single_box=single_box)
+        pr = self.make_pr(gt, single_box=single_box)
+
+        compute_loss(gt, pr)
 
         fig, ax = plot_boxes(gt, color="red")
         fig, ax = plot_boxes(pr[:, :, :5], color="lime", fig=fig, ax=ax)
         fig, ax = plot_boxes(pr[:, :, 5:], color="orange", fig=fig, ax=ax)
         plt.show()
-        
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

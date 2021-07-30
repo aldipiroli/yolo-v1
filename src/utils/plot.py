@@ -2,10 +2,10 @@
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-from src.utils.utils import *
+from src.utils.utils import get_box_coord
 
 
-def plot_boxes(box, H=448, W=448, S=7, fig=None, ax=None, color="red"):
+def plot_boxes(box, H=448, W=448, S=7, fig=None, ax=None, color="red", plot_corners=False):
     if fig is None and ax is None:
         fig, ax = plt.subplots()
 
@@ -22,8 +22,10 @@ def plot_boxes(box, H=448, W=448, S=7, fig=None, ax=None, color="red"):
                 # Plot Points:
                 points = get_box_coord(box[i, j, :])
                 points += [x_, y_]
-                for i in range(points.shape[0]):
-                    ax.plot(points[i, 0], points[i, 1], color=color, marker="o")
+                if plot_corners:
+                    for i in range(points.shape[0]):
+                        ax.plot(points[i, 0], points[i, 1], color=color, marker="o")
+                        ax.text(points[i, 0], points[i, 1], str(i))
 
                 # Plot BBox:
                 pt_idx = [[0, 1], [1, 2], [2, 3], [3, 0]]

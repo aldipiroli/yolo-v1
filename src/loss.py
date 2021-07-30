@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
 
+from src.utils.utils import get_box_coord
 
 
 def IoU(gt_box, pr_box):
@@ -18,16 +19,12 @@ def IoU(gt_box, pr_box):
     |                  |
     3------------------2
     """
-    print("gt_box\n", gt_box)
-    print("pr_box\n", pr_box)
     # Compute Intersection:
-    x_1 = min(gt_box[1][0], pr_box[1][0])
-    x_2 = max(gt_box[0][0], pr_box[0][0])
-    dx = x_1 - x_2
+    x_list = sorted([gt_box[0][0], gt_box[1][0], pr_box[0][0], pr_box[1][0]])
+    dx = np.absolute(x_list[1] - x_list[2])
 
-    y_1 = min(gt_box[3][0], pr_box[3][0])
-    y_2 = max(gt_box[0][1], pr_box[0][1])
-    dy = y_1 - y_2
+    y_list = sorted([gt_box[0][1], gt_box[3][1], pr_box[0][1], pr_box[3][1]])
+    dy = np.absolute(y_list[1] - y_list[2])
 
     inter = dx * dy
 
@@ -41,12 +38,24 @@ def IoU(gt_box, pr_box):
     pr_dx = np.absolute(pr_box[1][0] - pr_box[0][0])
     pr_dy = np.absolute(pr_box[3][1] - pr_box[0][1])
 
+    print("=" * 50)
     union = gt_dx * gt_dy + pr_dx * pr_dy - inter
 
+    print("GT BBox: \n", gt_box)
+    print("PR BBox: \n", pr_box)
+
+    print("GT dx %.2f, dy %.2f" % (gt_dx, gt_dy))
+    print("PR dx %.2f, dy %.2f" % (pr_dx, pr_dy))
+
+    print("Inter %.2f, dx %.2f, dy %.2f" % (inter, dx, dy))
+    print("x_list ", x_list, "y_list", y_list)
+
+    print("IoU: %.2f, Int: %.2f, Union: %.2f " % (inter / union, inter, union))
+    print("=" * 50)
     return inter / union
 
 
-def compute_loss(gt, pr, H, W, S):
+def compute_loss(gt, pr, H=448, W=448, S=7):
     for i in range(gt.shape[0]):
         for j in range(gt.shape[1]):
             x_ = H / S * i
@@ -56,22 +65,11 @@ def compute_loss(gt, pr, H, W, S):
                 pr_box1 = get_box_coord(pr[i, j, :5]) + [x_, y_]
                 pr_box2 = get_box_coord(pr[i, j, 5:]) + [x_, y_]
                 iou_box_1 = IoU(gt_box, pr_box1)
-                iou_box_2 = IoU(gt_box, pr_box2)
+                # iou_box_2 = IoU(gt_box, pr_box2)
 
-                print("IoU: ", iou_box_1, iou_box_2)
-
-
-if __name__ == "__main__":
-    print("OK")
-    # W, H = 448, 448
-    # S, B, C = 7, 2, 20
-    # pr = []
-    # gt = make_gt(S, C, W, H, fake=False)
-    # pr = make_pr(gt, B, fake=False)
-
-    # fig, ax = plot_boxes(gt, color="red")
-    # fig, ax = plot_boxes(pr[:, :, :5], color="lime", fig=fig, ax=ax)
-    # fig, ax = plot_boxes(pr[:, :, 5:], color="orange", fig=fig, ax=ax)
-    # plt.show()
-    # # yolo_loss(gt, pr)
-    # compute_loss(gt, pr, H, W, S)
+                # pr_box, pr_idx = (pr_box1, 1) if iou_box_1 >= iou_box_2 else (pr_box2, 2)
+                # print("*"*20)
+                # print("GT BBox: \n", gt_box)
+                # print("PR BBox 1: \n", pr_box1)
+                # print("PR BBox 2: \n", pr_box2)
+                # print("IoU Box1: %.2f, Box2: %.2f, Taken %d" % (iou_box_1, iou_box_2, pr_idx))
