@@ -1,7 +1,7 @@
 import torch
+import random
 from torch import nn
 import numpy as np
-import random
 
 
 class YOLOv1(nn.Module):
@@ -18,6 +18,7 @@ class YOLOv1(nn.Module):
             nn.Conv2d(256, 256, [1, 1], 1, 1),
             nn.Conv2d(256, 512, [3, 3], 1, 1),
             nn.MaxPool2d(2, 2),
+            nn.LeakyReLU(0.1),
         )
 
         self.conv_layer_4 = nn.Sequential(
@@ -36,6 +37,7 @@ class YOLOv1(nn.Module):
             nn.Conv2d(512, 512, [1, 1], 1, 0),
             nn.Conv2d(512, 1024, [3, 3], 1, 1),
             nn.MaxPool2d(2, 2),
+            nn.LeakyReLU(0.1),
         )
 
         self.conv_layer_5 = nn.Sequential(
@@ -47,15 +49,13 @@ class YOLOv1(nn.Module):
             nn.Conv2d(512, 1024, [3, 3], 1, 1),
             nn.Conv2d(1024, 1024, [3, 3], 1, 1),
             nn.Conv2d(1024, 1024, [3, 3], 2, 1),
+            nn.LeakyReLU(0.1),
         )
 
-        self.conv_layer_6 = nn.Sequential(
-            nn.Conv2d(1024, 1024, [3, 3], 1, 1),
-            nn.Conv2d(1024, 1024, [3, 3], 1, 1),
-        )
+        self.conv_layer_6 = nn.Sequential(nn.Conv2d(1024, 1024, [3, 3], 1, 1), nn.Conv2d(1024, 1024, [3, 3], 1, 1), nn.LeakyReLU(0.1))
 
         self.fc_layer_1 = nn.Sequential(nn.Flatten(), nn.Linear(1024 * self.S * self.S, 4096))
-        self.fc_layer_2 = nn.Linear(4096, self.S * self.S * (self.B * 5 + self.C))
+        self.fc_layer_2 = nn.Sequential(nn.Linear(4096, self.S * self.S * (self.B * 5 + self.C)), nn.ReLU())
 
     def forward(self, x):
         y = self.conv_layer_1(x)
