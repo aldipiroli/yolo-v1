@@ -76,17 +76,17 @@ class TestLoss(unittest.TestCase):
 
         compute_loss(gt, pr)
         
-        # # Plot GT
-        # fig, ax = plot_boxes(gt, color="red")
+        # Plot GT
+        fig, ax = plot_boxes(gt, color="red")
 
-        # # Plot Box 1
-        # pred_box = np.concatenate((pr[:, :, :4], pr[:, :, 10:]), axis=2)
-        # fig, ax = plot_boxes(pred_box, color="lime", fig=fig, ax=ax)
+        # Plot Box 1
+        pred_box = np.concatenate((pr[:, :, :4], pr[:, :, 10:]), axis=2)
+        fig, ax = plot_boxes(pred_box, color="lime", fig=fig, ax=ax)
 
-        # # Plot Box 2
-        # pred_box = np.concatenate((pr[:, :, 5:9], pr[:, :, 10:]), axis=2)
-        # fig, ax = plot_boxes(pred_box, color="aqua", fig=fig, ax=ax)
-        # plt.show()
+        # Plot Box 2
+        pred_box = np.concatenate((pr[:, :, 5:9], pr[:, :, 10:]), axis=2)
+        fig, ax = plot_boxes(pred_box, color="aqua", fig=fig, ax=ax)
+        plt.show()
 
 
 if __name__ == "__main__":
