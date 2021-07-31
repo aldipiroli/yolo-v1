@@ -50,11 +50,13 @@ def compute_loss(gt, pr, H=448, W=448, S=7):
         for j in range(gt.shape[1]):
             x_ = H / S * i
             y_ = W / S * j
-            if gt[i, j, 4] != -1:
+            if gt[i, j, 4:].any() != 0:
                 loss = 0
-                gt_box = get_box_coord(gt[i, j]) + [x_, y_]
-                pr_box1 = get_box_coord(pr[i, j, :5]) + [x_, y_]
-                pr_box2 = get_box_coord(pr[i, j, 5:]) + [x_, y_]
+                gt_box = get_box_coord(gt[i, j, :5]) + [x_, y_]
+                pr_box1 = get_box_coord(pr[i, j, :4]) + [x_, y_]
+                pr_box2 = get_box_coord(pr[i, j, 5:10]) + [x_, y_]
+                print("pr[i, j, 5:10]: ", pr[i, j])
+                input("...")
                 iou_box_1 = IoU(gt_box, pr_box1)
                 iou_box_2 = IoU(gt_box, pr_box2)
 
@@ -72,4 +74,3 @@ def compute_loss(gt, pr, H=448, W=448, S=7):
                 loss += lamb_obj * (np.square(gt_[0] - pr_[0]) + np.square(gt_[1] - pr_[1]))
                 # dimensions
                 loss += lamb_obj * (np.square(np.sqrt(gt_[2]) - np.sqrt(pr_[2])) + np.square(np.sqrt(gt_[3]) - np.sqrt(pr_[3])))
-                

@@ -1,7 +1,6 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
 from src.utils.utils import get_box_coord
 
 
@@ -12,10 +11,9 @@ def plot_boxes(box, H=448, W=448, S=7, fig=None, ax=None, color="red", plot_corn
     img = mpimg.imread("/home/aldi/workspace/yolo-v1/img/cat.png")[:H, :W, :]
     ax.imshow(img)
 
-    # Plot Box
     for i in range(box.shape[0]):
         for j in range(box.shape[1]):
-            if box[i, j, 4] != -1:
+            if box[i, j, 4:].any() != 0:
                 x_ = H / S * i
                 y_ = W / S * j
 
@@ -27,10 +25,10 @@ def plot_boxes(box, H=448, W=448, S=7, fig=None, ax=None, color="red", plot_corn
                         ax.plot(points[i, 0], points[i, 1], color=color, marker="o")
                         ax.text(points[i, 0], points[i, 1], str(i))
 
-                # Plot BBox:
+                # Plot Box:
                 pt_idx = [[0, 1], [1, 2], [2, 3], [3, 0]]
                 for idx in range(len(pt_idx)):
                     i, j = pt_idx[idx][0], pt_idx[idx][1]
                     ax.plot([points[i, 0], points[j, 0]], [points[i, 1], points[j, 1]], color=color)
-
+                
     return fig, ax

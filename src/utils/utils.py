@@ -19,8 +19,8 @@ def get_box_coord(box):
     """
     x = box[0]
     y = box[1]
-    H = box[3]
     W = box[2]
+    H = box[3]
 
     A = [x, y - H]
     B = [x + W, y - H]
