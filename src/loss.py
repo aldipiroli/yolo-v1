@@ -10,90 +10,93 @@ import matplotlib.patches as patches
 from src.utils.utils import get_box_coord
 
 
-def IoU(gt_box, pr_box):
+def IoU(gt, pr):
     """
-    IoU = Area Overlap / Area Total
-    0------------------1
+    Intersection Box:
+    A------------------.
     |                  |
     |                  |
     |                  |
-    3------------------2
+    .------------------B
     """
-    # Compute Intersection:
-    x_list = sorted([gt_box[0][0], gt_box[1][0], pr_box[0][0], pr_box[1][0]])
-    dx = np.absolute(x_list[1] - x_list[2])
+    # Compute intersection:
+    A_x = max(gt[0, 0], pr[0, 0])
+    A_y = max(gt[0, 1], pr[0, 1])
 
-    y_list = sorted([gt_box[0][1], gt_box[3][1], pr_box[0][1], pr_box[3][1]])
-    dy = np.absolute(y_list[1] - y_list[2])
+    B_x = min(gt[1, 0], pr[1, 0])
+    B_y = min(gt[1, 1], pr[1, 1])
 
-    inter = dx * dy
-
-
+    inter = (B_x - A_x) * (B_y - A_y)
     if inter < 0:
         return 0
 
-    # Compute Union:
-    gt_dx = np.absolute(gt_box[1][0] - gt_box[0][0])
-    gt_dy = np.absolute(gt_box[3][1] - gt_box[0][1])
+    # Compute union:
+    gt_area = abs((gt[1, 0] - gt[0, 0]) * (gt[1, 1] - gt[0, 1]))
+    pr_area = abs((pr[1, 0] - pr[0, 0]) * (pr[1, 1] - pr[0, 1]))
+    union = gt_area + pr_area - inter
 
-    pr_dx = np.absolute(pr_box[1][0] - pr_box[0][0])
-    pr_dy = np.absolute(pr_box[3][1] - pr_box[0][1])
+    IoU = inter / union
 
-    union = gt_dx * gt_dy + pr_dx * pr_dy - inter
-
-    print("Inter %.2f, Union %.2f, dx %.2f, dy %.2f, gt_dx %.2f, gt_dy %.2f,  pr_dx %.2f, pr_dy %.2f " % (inter, union, dx, dy, gt_dx, gt_dy, pr_dx, pr_dy))
-    return inter / union
+    assert IoU >= 0 and IoU <= 1, ("Error in the IoU computation, IoU: ", IoU)
+    return IoU
 
 
-def compute_loss(gt, pr, H=448, W=448, S=7, C=20):
-    lamb_obj = 5
-    lamb_noobj = 0.5
+def compute_loss(gt_boxes, pr_boxes, C=20):
+    assert gt_boxes.shape[0] == pr_boxes.shape[0], ("GT and PR have different batch sizes!", gt_boxes.shape[0], pr_boxes.shape[0])
+    N_BATCHES = gt_boxes.shape[0]
 
-    loss = 0a
-    for i in range(gt.shape[0]):
-        for j in range(gt.shape[1]):
-            x_ = H / S * i
-            y_ = W / S * j
-            if gt[i, j, 4:].any() != 0:
-                print("GT: ", gt[i, j, :4])
-                print("PR: ", pr[i,j])
-                print("BOX1: ", pr[i, j, :4])
-                print("BOX2: ", pr[i, j, 5:9])
-                gt_box = get_box_coord(gt[i, j, :4]) + [x_, y_]
-                pr_box1 = get_box_coord(pr[i, j, :4]) + [x_, y_]
-                pr_box2 = get_box_coord(pr[i, j, 5:9]) + [x_, y_]
+    LAMB_OBJ = 5
+    LAMB_NOOBJ = 0.5
 
-                iou_box_1 = IoU(gt_box, pr_box1)
-                iou_box_2 = IoU(gt_box, pr_box2)
-                assert iou_box_1 <= 1 and iou_box_2 <= 1 and iou_box_1 * iou_box_2 >= 0,("Error in IoU computation", iou_box_1, iou_box_2 )
+    losses = []
+    for n in range(N_BATCHES):
+        gt = gt_boxes[n, :]
+        pr = pr_boxes[n, :]
 
-                # Get Box with highest IoU with the GT:
-                box_idx = 1 if iou_box_1 >= iou_box_2 else 2
-                gt_ = gt[i, j]
-                if box_idx == 1:
-                    pr_ = np.concatenate((pr[i, j, :5], pr[i, j, 10:]), axis=0)
-                else:
-                    pr_ = np.concatenate((pr[i, j, 5:10], pr[i, j, 10:]), axis=0)
+        S = gt.shape[0]
+        loss = 0
+        for i in range(S):
+            for j in range(S):
+                # Check if an object is present in the cell:
+                if gt[i, j, 4:].any() != 0:
+                    gt_box = get_box_coord(gt[i, j, :4])
+                    pr_box1 = get_box_coord(pr[i, j, :4])
+                    pr_box2 = get_box_coord(pr[i, j, 5:9])
 
-                # Compute Squared Error Loss for each component:
-                # position
-                loss += lamb_obj * (np.square(gt_[0] - pr_[0]) + np.square(gt_[1] - pr_[1]))
-                # dimensions
-                loss += lamb_obj * (np.square(np.sqrt(gt_[2]) - np.sqrt(pr_[2])) + np.square(np.sqrt(gt_[3]) - np.sqrt(pr_[3])))
-                # P(Obj) cell with obj
-                loss += np.square(1 - pr_[4])
+                    iou_box1 = IoU(gt_box, pr_box1)
+                    iou_box2 = IoU(gt_box, pr_box2)
 
-                # P(C_i|Obj)
-                try:
+                    # Select box with highest IoU with gt:
+                    if iou_box1 >= iou_box2:
+                        pred = np.concatenate((pr[i, j, :5], pr[i, j, 10:]), axis=0)
+                    else:
+                        pred = np.concatenate((pr[i, j, 5:10], pr[i, j, 10:]), axis=0)
+                    gt_ = gt[i, j]
+
+                    # Compute Squared Error Loss for each component:
+                    # position
+                    loss += LAMB_OBJ * (np.square(gt_[0] - pred[0]) + np.square(gt_[1] - pred[1]))
+
+                    # dimensions
+                    loss += LAMB_OBJ * (np.square(np.sqrt(gt_[2]) - np.sqrt(pred[2])) + np.square(np.sqrt(gt_[3]) - np.sqrt(pred[3])))
+
+                    # P(Obj) cell with obj
+                    loss += np.square(1 - pred[4])
+
+                    # P(C_i|Obj)
                     for idx in range(C):
                         if gt_[4 + idx] == 1:
-                            loss += np.square(1 - pr_[5 + idx])
+                            loss += np.square(1 - pred[5 + idx])
                         else:
-                            loss += np.square(0 - pr_[5 + idx])
-                except:
-                    print(pr_)
+                            loss += np.square(0 - pred[5 + idx])
 
-            else:
-                # P(Obj) cell without obj
-                # not clear from the paper. Maybe change to the BBox with highest confidence, or both of them.
-                loss += lamb_noobj * np.square(0 - 1)
+                else:
+                    # P(Obj) cell without obj
+                    # not clear from the paper.
+                    loss += LAMB_NOOBJ * np.square(0 - pr[i, j, 4])
+                    loss += LAMB_NOOBJ * np.square(0 - pr[i, j, 9])
+
+        # Append batch loss
+        losses.append(loss)
+
+    return losses
