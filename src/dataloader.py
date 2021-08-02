@@ -23,8 +23,13 @@ VOC2007_LABELS = {
     "tvmonitor": 15,
 }
 
-def voc2007_to_onehot(name):
-    for 
+
+def label_to_onehot(name, C=20):
+    one_hot_label = np.zeros((C))
+    idx = VOC2007_LABELS[name]
+    one_hot_label[idx] = 1
+    return one_hot_label.reshape(-1, 20)
+
 
 class DataLoaderVOC2007(Dataset):
     def __init__(self, root_dir, split="train"):
@@ -53,7 +58,10 @@ class DataLoaderVOC2007(Dataset):
     def parse_annotation(self, file_name):
         print("Parsing: ", file_name)
         root = ET.parse(file_name).getroot()
+
+        annotations = []
         for obj in root.findall("object"):
+
             name = obj.find("name").text
             label = VOC2007_LABELS[name]
             bbox = obj.find("bndbox")
@@ -61,8 +69,22 @@ class DataLoaderVOC2007(Dataset):
             ymin = int(bbox.find("ymin").text)
             xmax = int(bbox.find("xmax").text)
             ymax = int(bbox.find("ymax").text)
-            box = np.array((xmin, ymin, xmax, ymax))
-            print(name, label, box)
+            box = np.array((xmin, ymin, xmax, ymax)).reshape(-1, 4)
+            label_one_hot = label_to_onehot(name)
+
+            ann = np.concatenate((box, label_one_hot), axis=1)
+            annotations.append(ann.squeeze())
+
+        # Get image size:
+        size = root.find("size")
+        width = int(size.find("width").text)
+        height = int(size.find("height").text)
+        depth = int(size.find("depth").text)
+
+        img_size = np.array((width, height, depth))
+
+        return img_size, annotations
+        
 
     def __len__(self):
         return 0
