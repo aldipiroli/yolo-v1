@@ -35,7 +35,7 @@ def plot_boxes(box, H=448, W=448, S=7, fig=None, ax=None, color="red", plot_corn
     return fig, ax
 
 
-def plot_voc2007_full_boxes(
+def plot_voc2007_boxes(
     img,
     annotations,
     fig=None,

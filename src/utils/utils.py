@@ -28,6 +28,9 @@ def get_box_coord(box):
 
 
 def resize_data(image_file, annotations, output_size=(448, 448)):
+    """
+    Resize an image and relative annotation to a desired output
+    """
     img = mpimg.imread(image_file)
     h, w = img.shape[0], img.shape[1]
 
@@ -43,3 +46,42 @@ def resize_data(image_file, annotations, output_size=(448, 448)):
         ann[3] = np.clip(ann[3] * ann_ratio[1], 0, new_w)
 
     return img, annotations
+
+
+def is_inside_box(center_x, center_y, box):
+    if center_x > box[0] and center_x < box[1]:
+        if center_y > box[2] and center_y < box[3]:
+            return True
+
+    return False
+
+def convert_coordinate_abs_rel(center_x, center_y, box):
+    """ Convert the coordinates from absolute value (image) to relative one of the bbox """
+    new_x = center_x - box[0] 
+    new_y = center_y - box[2] 
+
+    return new_x, new_y
+
+def convert_annotation_to_label(annotations, S=7, H=448, W=448):
+    label = np.zeros((S, S, 24))
+    STEP = H / 7
+
+    for i in range(S):
+        for j in range(S):
+            x_min, x_max = STEP * i, STEP * (i + 1)
+            y_min, y_max = STEP * j, STEP * (j + 1)
+
+            box = np.array((x_min, x_max, y_min, y_max))
+
+            for ann in annotations:
+                ann_x_min, ann_y_min = ann[0], ann[1]
+                ann_x_max, ann_y_max = ann[2], ann[3]
+                center_x = (ann_x_max - ann_x_min) / 2
+                center_y = (ann_y_max - ann_y_min) / 2
+
+
+            if is_inside_box(center_x, center_y, box):
+                x, y = convert_coordinate_abs_rel(center_x, center_y, box)
+                w = ann_x_max - ann_x_min
+                h = ann_y_max - ann_y_min
+                label[i,j] = [x, y, w, h, ]
