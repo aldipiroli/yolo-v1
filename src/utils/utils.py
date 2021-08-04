@@ -55,12 +55,14 @@ def is_inside_box(center_x, center_y, box):
 
     return False
 
+
 def convert_coordinate_abs_rel(center_x, center_y, box):
-    """ Convert the coordinates from absolute value (image) to relative one of the bbox """
-    new_x = center_x - box[0] 
-    new_y = center_y - box[2] 
+    """Convert the coordinates from absolute value (image) to relative one of the bbox"""
+    new_x = center_x - box[0]
+    new_y = center_y - box[2]
 
     return new_x, new_y
+
 
 def convert_annotation_to_label(annotations, S=7, H=448, W=448):
     label = np.zeros((S, S, 24))
@@ -73,17 +75,18 @@ def convert_annotation_to_label(annotations, S=7, H=448, W=448):
 
             box = np.array((x_min, x_max, y_min, y_max))
 
-            for ann in annotations:
+            for k in range(len(annotations)):
+                ann = annotations[k]
                 ann_x_min, ann_y_min = ann[0], ann[1]
                 ann_x_max, ann_y_max = ann[2], ann[3]
-                center_x = (ann_x_max - ann_x_min) / 2
-                center_y = (ann_y_max - ann_y_min) / 2
+                center_x = (ann_x_max - ann_x_min) / 2 + ann_x_min
+                center_y = (ann_y_max - ann_y_min) / 2 + ann_y_min
 
+                if is_inside_box(center_x, center_y, box):
+                    x, y = convert_coordinate_abs_rel(center_x, center_y, box)
+                    w = ann_x_max - ann_x_min
+                    h = ann_y_max - ann_y_min
+                    label[i, j, :4] = [x, y, w, h]
+                    label[i, j, 4:] = ann[4:]
 
-            if is_inside_box(center_x, center_y, box):
-                x, y = convert_coordinate_abs_rel(center_x, center_y, box)
-                w = ann_x_max - ann_x_min
-                h = ann_y_max - ann_y_min
-                label[i,j, :4] = [x, y, w, h]
-                label[i,j, 4:] = ann[4:]
-
+    return label
