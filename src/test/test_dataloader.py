@@ -4,7 +4,7 @@ from src.utils.plot import plot_voc2007_boxes
 from src.utils.utils import resize_data, convert_annotation_to_label
 
 class TestDataLoader(unittest.TestCase):
-    ROOT_DIR = "/home/aldi/workspace/yolo-v1/data/VOC2007"
+    ROOT_DIR = "data/VOC2007"
     SPLIT = "train"
     data_loader = DataLoaderVOC2007(ROOT_DIR, SPLIT)
 

@@ -84,4 +84,6 @@ def convert_annotation_to_label(annotations, S=7, H=448, W=448):
                 x, y = convert_coordinate_abs_rel(center_x, center_y, box)
                 w = ann_x_max - ann_x_min
                 h = ann_y_max - ann_y_min
-                label[i,j] = [x, y, w, h, ]
+                label[i,j, :4] = [x, y, w, h]
+                label[i,j, 4:] = ann[4:]
+
