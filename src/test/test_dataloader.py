@@ -8,12 +8,12 @@ class TestDataLoader(unittest.TestCase):
     SPLIT = "train"
     data_loader = DataLoaderVOC2007(ROOT_DIR, SPLIT)
 
-    K = 3
+    K = 71
     image_filename = data_loader[K]["image"]
     img_size, annotations = data_loader.parse_annotation(data_loader[K]["annotation"])
 
     img, annotations = resize_data(image_filename, annotations)
-    plot_voc2007_boxes(img, annotations)
+    # plot_voc2007_boxes(img, annotations)
     annotations = convert_annotation_to_label(annotations)
     plot_voc2007_labels(img, annotations)
     

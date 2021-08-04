@@ -56,11 +56,6 @@ def plot_voc2007_boxes(
         p4 = [x_min, y_max]
 
         p = np.array([p1, p2, p3, p4, p1])
-        print("CORRECT")
-        print("p1: ", p1)
-        print("p2: ", p2)
-        print("p3: ", p3)
-        print("p4: ", p4)
         ax.plot(p[:, 0], p[:, 1], color=color, marker="o")
 
     plt.show()
@@ -85,19 +80,11 @@ def plot_voc2007_labels(img, annotations, fig=None, ax=None, color="green", H=44
                 w = ann[2] / 2
                 h = ann[3] / 2
 
-                print("### i,j: [ %.2f, %.2f ]" % (i, j))
-                print("x %.2f, y %.2f, w %.2f, h %.2f" % (x, y, w, h))
-
                 p1 = [x - w + STEP_X, y - h + STEP_Y] 
                 p2 = [x + w + STEP_X, y - h + STEP_Y] 
                 p3 = [x + w + STEP_X, y + h + STEP_Y] 
                 p4 = [x - w + STEP_X, y + h + STEP_Y] 
 
-                print("NOT CORRECT")
-                print("p1: ", p1)
-                print("p2: ", p2)
-                print("p3: ", p3)
-                print("p4: ", p4)
                 p = np.array([p1, p2, p3, p4, p1])
                 ax.plot(p[:, 0], p[:, 1], color=color, marker="o")
 
