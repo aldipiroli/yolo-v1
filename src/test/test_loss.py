@@ -5,7 +5,6 @@ import torch
 from random import randrange
 import matplotlib.pyplot as plt
 
-
 from src.loss import compute_loss
 from src.utils.plot import plot_boxes
 
