@@ -7,79 +7,77 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
 
+from src.utils.utils import IoU
+
+
 class YOLOv1Loss(torch.nn.Module):
     def __init__(self, C=20, B=2, S=7):
-        super(YOLOv1Loss,self).__init__()
+        super(YOLOv1Loss, self).__init__()
         self.C = C
         self.B = B
         self.S = S
+        self.lamb_obj = 5
+        self.lamb_noobj = 0.5
+        self.mse = torch.nn.MSELoss(reduction="sum")
+        self.loss = 0
 
-    def forward(self, predictions, targets):
-        print(predictions.shape, targets.shape)
+    def forward(self, gt, pr):
+        self.loss = 0
 
-    
+        exist_object = gt[..., 4].unsqueeze(-1)
+        pr_box1 = pr[..., 0:5]
+        pr_box2 = pr[..., 5:10]
 
+        iou_box1 = torch.unsqueeze(IoU(gt, pr_box1), dim=-1)
+        iou_box2 = torch.unsqueeze(IoU(gt, pr_box2), dim=-1)
 
-    # def get_box_coord(self, box):
-    #     """
-    #     Input:
-    #     box[0], box[1]: center of the cell (cell reference [0,1])
-    #     box[2], box[3]: height, width of the cell (image reference [H,W])
+        ious = torch.cat((iou_box1, iou_box2), dim=-1)
+        max_iou, best_box = torch.max(ious, dim=-1)
 
-    #     Output:
-    #     A-------------------
-    #     |                  |
-    #     |                  |
-    #     |                  |
-    #     -------------------B
-    #     """
-    #     x = box[0]
-    #     y = box[1]
-    #     w = box[2]
-    #     h = box[3]
+        best_box = best_box.unsqueeze(-1)
 
-    #     A = [x - w / 2, y - h / 2]
-    #     B = [x + w / 2, y + h / 2]
+        print("exist_object", exist_object.shape)
+        print("pr", pr.shape)
+        print("gt", gt.shape)
+        print("best_box", best_box.shape)
+        print("pr_box1", pr_box1.shape)
+        print("pr_box2", pr_box2.shape)
 
-    #     return torch.tensor((A, B))
+        # Find labels and preds:
+        pred_ = exist_object * ((1 - best_box) * pr_box1 + best_box * pr_box2)
+        gt_ = exist_object * gt
 
+        # ------------------------------- #
+        # Loss x,y:
+        # ------------------------------- #
+        pred = pred_[..., 0:2]
+        gt = gt_[..., 0:2]
+        self.loss += self.lamb_obj * self.mse(pred, gt)
 
-    # def IoU(self, gt, pr):
-    #     """
-    #     Intersection Box:
-    #     A------------------.
-    #     |                  |
-    #     |                  |
-    #     |                  |
-    #     .------------------B
-    #     """
-    #     # Compute intersection:
-    #     A_x = max(gt[0, 0], pr[0, 0])
-    #     A_y = max(gt[0, 1], pr[0, 1])
+        # ------------------------------- #
+        # Loss w,h:
+        # ------------------------------- #
+        pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
+        gt = torch.sqrt(gt_[..., 2:4])
+        self.loss += self.mse(pred, gt)
 
-    #     B_x = min(gt[1, 0], pr[1, 0])
-    #     B_y = min(gt[1, 1], pr[1, 1])
+        # ------------------------------- #
+        # Loss obj:
+        # ------------------------------- #
+        pred = pred_[..., 4:5]
+        gt = exist_object * gt_[..., 4:5]
+        self.loss += self.mse(pred, gt)
 
-    #     inter = (B_x - A_x) * (B_y - A_y)
-    #     if inter < 0:
-    #         return 0
+        return self.loss
 
-    #     # Compute union:
-    #     gt_area = abs((gt[1, 0] - gt[0, 0]) * (gt[1, 1] - gt[0, 1]))
-    #     pr_area = abs((pr[1, 0] - pr[0, 0]) * (pr[1, 1] - pr[0, 1]))
-    #     union = gt_area + pr_area - inter
+        # # pred_x = Iobj* ((1-best_box) * pr_box1[...,0] + best_box*pr_box2[...,0])
+        # # pred_y = Iobj* ((1-best_box) * pr_box1[...,1] + best_box*pr_box2[...,1])
+        # # gt_x = Iobj * gt[..., 0]
+        # # gt_y = Iobj * gt[..., 1]
 
-    #     IoU = inter / union
-
-    #     # Sanity Check for the predictions:
-    #     if pr_area == 0:
-    #         return 0
-    #     if pr[0, 0] < 0 or pr[0, 1] < 0 or pr[1, 0] < 0 or pr[1,1] < 0:
-    #         return 0
-
-
-    #     assert IoU >= 0 and IoU <= 1, ("Error in the IoU computation, IoU: ", IoU, gt, pr)
-    #     return IoU
+        # print("pred", pred.shape)
+        # print(pred.shape, pr_box1.shape)
+        # print(loss.shape)
 
     # def forward(self, pr_boxes, gt_boxes):
     #     assert gt_boxes.shape[0] == pr_boxes.shape[0], (
@@ -147,14 +145,10 @@ class YOLOv1Loss(torch.nn.Module):
     #         # Append batch loss
     #         loss = torch.tensor(loss)
     #         losses.append(loss)
-        
+
     #     losses = torch.tensor(losses)
     #     loss = torch.mean(losses)
     #     return torch.tensor(loss, requires_grad=True)
-
-
-
-
 
 
 # def compute_loss(gt_boxes, pr_boxes, C=20):

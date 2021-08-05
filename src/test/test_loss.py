@@ -3,15 +3,16 @@ import torch
 import random 
 import numpy as np 
 import matplotlib.pyplot as plt
-from src.utils.plot import plot_voc2007_labels
 
+from src.utils.plot import plot_voc2007_labels
+from src.loss import YOLOv1Loss
 
 class TestYOLOv1Loss(unittest.TestCase):
-    def make_gt(self, batch_size=2, S=7, C=20, W=448, H=448, manual_input=False):
+    def make_gt(self, batch_size=5, S=7, C=20, W=448, H=448, manual_input=False):
         gts = []
 
+        counter = 0
         for _ in range(batch_size):
-            counter = 0
             gt = np.zeros((S, S, 5 + C))
 
             for i in range(S):
@@ -32,6 +33,7 @@ class TestYOLOv1Loss(unittest.TestCase):
             gts.append(gt)
         gts = np.array(gts)
         gts = torch.from_numpy(gts)
+        print("#GT: %d" % counter)
         return gts
     
     def make_pr(self, gts, S=7, B=2, C=20, err=15, manual_input=False):
@@ -59,17 +61,22 @@ class TestYOLOv1Loss(unittest.TestCase):
             prs.append(pr)
         prs = np.array(prs)
         prs = torch.from_numpy(prs)
-        return np.array(prs)
+        return prs
 
 
     def test_loss(self):
         gt = self.make_gt()
         pr = self.make_pr(gt)
 
-        img = np.random.random((448, 488))
-        fig, ax = plot_voc2007_labels(img, gt[0, :], color="lime")
-        fig, ax = plot_voc2007_labels(img, pr[0, :], fig=fig, ax=ax)
-        plt.show()
+        loss_func = YOLOv1Loss()
+        loss = loss_func(gt, pr)
+        print("The final loss: ", loss)
+        # img = np.random.random((448, 488))
+        # fig, ax = plot_voc2007_labels(img, gt[0, :], color="lime")
+        # fig, ax = plot_voc2007_labels(img, pr[0, :], fig=fig, ax=ax)
+        # plt.show()
+
+
 
 if __name__ == "__main__":
     unittest.main()

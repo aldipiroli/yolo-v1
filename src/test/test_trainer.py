@@ -3,6 +3,7 @@ import yaml
 import torch
 
 from src.trainer import Trainer
+from src.loss import YOLOv1Loss
 
 class TestTrainer(unittest.TestCase):
     def read_config(conf_file):
@@ -26,8 +27,11 @@ class TestTrainer(unittest.TestCase):
         label = torch.unsqueeze(label, 0)
 
         out = trainer.net(img)
-        trainer.loss(label, out)
-
+        print("Out: ", out.shape)
+        print("label: ", label.shape)
+        loss_fc = YOLOv1Loss()
+        loss = loss_fc(label, out)
+        print("The loss func: ", loss)
         trainer.optimizer.zero_grad()
         loss.backward()
         trainer.optimizer.step()
