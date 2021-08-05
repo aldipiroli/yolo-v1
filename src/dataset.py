@@ -23,8 +23,11 @@ VOC2007_LABELS = {
     "sofa": 13,
     "train": 14,
     "tvmonitor": 15,
+    "person":16,
+    "bird": 17,
+    "cow": 18,
+    "sheep": 19,
 }
-
 
 def label_to_onehot(name, C=20):
     one_hot_label = np.zeros((C))
@@ -33,7 +36,7 @@ def label_to_onehot(name, C=20):
     return one_hot_label.reshape(-1, 20)
 
 
-class DataLoaderVOC2007(Dataset):
+class DatasetVOC2007(Dataset):
     def __init__(self, root_dir, S=7, H=448, W=448, C=20, B=2, split="train"):
         self.S = S
         self.W = W
@@ -63,7 +66,6 @@ class DataLoaderVOC2007(Dataset):
                 self.filenames.append(dic_files)
 
     def parse_annotation(self, file_name):
-        print("Parsing: ", file_name)
         root = ET.parse(file_name).getroot()
 
         annotations = []
@@ -168,5 +170,5 @@ class DataLoaderVOC2007(Dataset):
 
         return img, annotations
 
-    def __len__(self, idx):
+    def __len__(self):
         return len(self.filenames)

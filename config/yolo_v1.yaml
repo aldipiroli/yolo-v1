@@ -1,0 +1,12 @@
+DATASET:
+  root_dir: "data/VOC2007"
+
+STUCTURE:
+  S: 7
+  B: 2
+  C: 20
+
+TRAINING:
+  n_epochs: 3
+  batch_size: 10
+  num_workers: 0
