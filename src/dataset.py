@@ -23,11 +23,12 @@ VOC2007_LABELS = {
     "sofa": 13,
     "train": 14,
     "tvmonitor": 15,
-    "person":16,
+    "person": 16,
     "bird": 17,
     "cow": 18,
     "sheep": 19,
 }
+
 
 def label_to_onehot(name, C=20):
     one_hot_label = np.zeros((C))
@@ -102,6 +103,7 @@ class DatasetVOC2007(Dataset):
 
         new_h, new_w = self.H, self.W
         new_img = transform.resize(img, (new_h, new_w))
+        new_img = new_img.transpose(2, 0, 1) # 3x448x448
 
         ann_ratio = np.array([new_w / w, new_h / h])
 
@@ -167,6 +169,10 @@ class DatasetVOC2007(Dataset):
 
         img, annotations = self.resize_data(img, annotations)
         annotations = self.convert_annotation_to_label(annotations)
+
+        # convert to torch 
+        img = torch.tensor(img).float()
+        annotations = torch.tensor(annotations).float()
 
         return img, annotations
 
