@@ -38,7 +38,7 @@ def label_to_onehot(name, C=20):
 
 
 class DatasetVOC2007(Dataset):
-    def __init__(self, root_dir, S=7, H=448, W=448, C=20, B=2, split="train"):
+    def __init__(self, root_dir="data/VOC2007", S=7, H=448, W=448, C=20, B=2, split="train"):
         self.S = S
         self.W = W
         self.H = H
