@@ -6,6 +6,11 @@ import numpy as np
 
 class YOLOv1(nn.Module):
     def __init__(self, split_size, blocks_num, num_classes):
+        """
+        split_size (S): size of the grid that the image is divided into
+        block_nums (B): number of boxes predicted per cell by the network
+        num_classes (C): number of classes that the network is trained 
+        """
         super(YOLOv1, self).__init__()
 
         self.S, self.B, self.C = split_size, blocks_num, num_classes
@@ -69,14 +74,3 @@ class YOLOv1(nn.Module):
         y = torch.reshape(y, (-1, self.S, self.S, 30))
 
         return y
-
-
-if __name__ == "__main__":
-    split_size, blocks_num, num_classes = 7, 2, 20
-    nn = YOLOv1(split_size, blocks_num, num_classes)
-
-    x = np.random.rand(2, 3, 448, 448)
-    x = torch.Tensor(x)
-    y = nn(x)
-    print("Input shape: ", x.shape)
-    print("Output shape: ", y.shape)

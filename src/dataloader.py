@@ -3,6 +3,8 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import xml.etree.ElementTree as ET
+import matplotlib.image as mpimg
+from skimage import io, transform
 
 VOC2007_LABELS = {
     "aeroplane": 0,
@@ -32,7 +34,12 @@ def label_to_onehot(name, C=20):
 
 
 class DataLoaderVOC2007(Dataset):
-    def __init__(self, root_dir, split="train"):
+    def __init__(self, root_dir, S=7, H=448, W=448, C=20, B=2, split="train"):
+        self.S = S
+        self.W = W
+        self.H = H
+        self.C = C
+        self.B = B
         self.root_dir = root_dir
         self.split_path = os.path.join(self.root_dir, "ImageSets", "Layout", split + ".txt")
         assert os.path.isfile(self.split_path), ("The split path is not correct: ", self.split_path)
@@ -83,11 +90,83 @@ class DataLoaderVOC2007(Dataset):
 
         img_size = np.array((width, height, depth))
 
-        return img_size, annotations
-        
+        return annotations
 
-    def __len__(self):
-        return 0
+    def resize_data(self, img, annotations):
+        """
+        Resize an image and relative annotation to a desired output
+        """
+        h, w = img.shape[0], img.shape[1]
+
+        new_h, new_w = self.H, self.W
+        new_img = transform.resize(img, (new_h, new_w))
+
+        ann_ratio = np.array([new_w / w, new_h / h])
+
+        for ann in annotations:
+            ann[0] = np.clip(ann[0] * ann_ratio[0], 0, new_w)
+            ann[1] = np.clip(ann[1] * ann_ratio[1], 0, new_h)
+            ann[2] = np.clip(ann[2] * ann_ratio[0], 0, new_w)
+            ann[3] = np.clip(ann[3] * ann_ratio[1], 0, new_w)
+
+        return new_img, annotations
+
+    def load_img(self, image_filename):
+        img = mpimg.imread(image_filename)
+        return img
+
+    def convert_coordinate_abs_rel(self, center_x, center_y, box):
+        """Convert the coordinates from absolute value (image) to relative one of the bbox"""
+        new_x = center_x - box[0]
+        new_y = center_y - box[2]
+
+        return new_x, new_y
+
+    def is_inside_box(self, center_x, center_y, box):
+        if center_x > box[0] and center_x < box[1]:
+            if center_y > box[2] and center_y < box[3]:
+                return True
+
+        return False
+
+    def convert_annotation_to_label(self, annotations):
+        label = np.zeros((self.S, self.S, 4 + self.C))
+        STEP = self.H / 7
+
+        for i in range(self.S):
+            for j in range(self.S):
+                x_min, x_max = STEP * i, STEP * (i + 1)
+                y_min, y_max = STEP * j, STEP * (j + 1)
+
+                box = np.array((x_min, x_max, y_min, y_max))
+
+                for k in range(len(annotations)):
+                    ann = annotations[k]
+                    ann_x_min, ann_y_min = ann[0], ann[1]
+                    ann_x_max, ann_y_max = ann[2], ann[3]
+                    center_x = (ann_x_max - ann_x_min) / 2 + ann_x_min
+                    center_y = (ann_y_max - ann_y_min) / 2 + ann_y_min
+
+                    if self.is_inside_box(center_x, center_y, box):
+                        x, y = self.convert_coordinate_abs_rel(center_x, center_y, box)
+                        w = ann_x_max - ann_x_min
+                        h = ann_y_max - ann_y_min
+                        label[i, j, :4] = [x, y, w, h]
+                        label[i, j, 4:] = ann[4:]
+
+        return label
 
     def __getitem__(self, index):
-        return self.filenames[index]
+        image_filename = self.filenames[index]["image"]
+        annotation_filename = self.filenames[index]["annotation"]
+
+        img = self.load_img(image_filename)
+        annotations = self.parse_annotation(annotation_filename)
+
+        img, annotations = self.resize_data(img, annotations)
+        annotations = self.convert_annotation_to_label(annotations)
+
+        return img, annotations
+
+    def __len__(self, idx):
+        return len(self.filenames)
