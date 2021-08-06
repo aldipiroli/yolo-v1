@@ -52,6 +52,7 @@ def plot_voc2007_labels(img, annotations, fig=None, ax=None, color="red"):
             STEP_X = i * STEP
             STEP_Y = j * STEP
             ann = annotations[i, j, :]
+
             if ann[4] != 0:
                 x = ann[0]
                 y = ann[1]

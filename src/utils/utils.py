@@ -59,17 +59,17 @@ def IoU(gt, pr):
 
     A_x, A_y, B_x, B_y = get_box_coord(gt, pr)
 
-    # Compute Intersection: 
+    # Compute Intersection:
     inter = (B_x - A_x) * (B_y - A_y)
-    
+
     # Compute union:
     gt_w = gt[..., 2]
     gt_h = gt[..., 3]
 
     pr_w = pr[..., 2]
     pr_h = pr[..., 3]
-    
-    # Compute Union:
+
+    # Compute Union:
     gt_area = abs(gt_w * gt_h)
     pr_area = abs(pr_w * pr_h)
     union = gt_area + pr_area - inter
@@ -83,7 +83,14 @@ def IoU(gt, pr):
     mask_neg = torch.le(IoU, 0 - 1e-6)
     mask_one = torch.gt(IoU, 1)
 
-    if mask_neg.any() == True or mask_neg.any() == True:
-        if mask_one.any() == True or mask_one.any() == True:
-            print ("Error in the IoU computation")
+    # if mask_neg.any() == True or mask_neg.any() == True or mask_one.any() == True or mask_one.any() == True:
+    #     print("Error in the IoU computation")
+    #     print("\n\nIoU: ", IoU, " \n\ninter: ",inter,"\n\nunion", union )
+    #     exit()
     return IoU
+
+def split_output_boxes(output):
+    box1 = torch.cat((output[..., :5], output[..., 10:]), 3)
+    box2 = torch.cat((output[..., 5:10], output[..., 10:]), 3)
+
+    return box1, box2

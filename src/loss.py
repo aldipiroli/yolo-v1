@@ -36,13 +36,6 @@ class YOLOv1Loss(torch.nn.Module):
 
         best_box = best_box.unsqueeze(-1)
 
-        print("exist_object", exist_object.shape)
-        print("pr", pr.shape)
-        print("gt", gt.shape)
-        print("best_box", best_box.shape)
-        print("pr_box1", pr_box1.shape)
-        print("pr_box2", pr_box2.shape)
-
         # Find labels and preds:
         pred_ = exist_object * ((1 - best_box) * pr_box1 + best_box * pr_box2)
         gt_ = exist_object * gt
@@ -54,20 +47,20 @@ class YOLOv1Loss(torch.nn.Module):
         gt = gt_[..., 0:2]
         self.loss += self.lamb_obj * self.mse(pred, gt)
 
-        # ------------------------------- #
-        # Loss w,h:
-        # ------------------------------- #
-        pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
-        gt = torch.sqrt(gt_[..., 2:4])
-        self.loss += self.mse(pred, gt)
+        # # ------------------------------- #
+        # # Loss w,h:
+        # # ------------------------------- #
+        # pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
+        # gt = torch.sqrt(gt_[..., 2:4])
+        # self.loss += self.mse(pred, gt)
 
-        # ------------------------------- #
-        # Loss obj:
-        # ------------------------------- #
-        pred = pred_[..., 4:5]
-        gt = exist_object * gt_[..., 4:5]
-        self.loss += self.mse(pred, gt)
-
+        # # ------------------------------- #
+        # # Loss obj:
+        # # ------------------------------- #
+        # pred = pred_[..., 4:5]
+        # gt = exist_object * gt_[..., 4:5]
+        # self.loss += self.mse(pred, gt)
+        print("The loss is: ", self.loss)
         return self.loss
 
         # # pred_x = Iobj* ((1-best_box) * pr_box1[...,0] + best_box*pr_box2[...,0])

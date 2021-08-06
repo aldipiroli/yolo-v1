@@ -134,7 +134,7 @@ class DatasetVOC2007(Dataset):
         return False
 
     def convert_annotation_to_label(self, annotations):
-        label = np.zeros((self.S, self.S, 4 + self.C))
+        label = np.zeros((self.S, self.S, 5 + self.C))
         STEP = self.H / 7
 
         for i in range(self.S):
@@ -155,8 +155,8 @@ class DatasetVOC2007(Dataset):
                         x, y = self.convert_coordinate_abs_rel(center_x, center_y, box)
                         w = ann_x_max - ann_x_min
                         h = ann_y_max - ann_y_min
-                        label[i, j, :4] = [x, y, w, h]
-                        label[i, j, 4:] = ann[4:]
+                        label[i, j, :5] = [x, y, w, h, 1]
+                        label[i, j, 5:] = ann[4:]
 
         return label
 
