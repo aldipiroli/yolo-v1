@@ -7,7 +7,7 @@ NETWORK:
   C: 20
 
 TRAINING:
-  n_epochs: 1000
+  n_epochs: 3
   batch_size: 10
   num_workers: 0
   learning_rate: 0.0001

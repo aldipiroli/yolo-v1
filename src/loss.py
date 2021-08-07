@@ -6,8 +6,7 @@ from random import randrange
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
-
-from src.utils.utils import IoU
+from src.utils.utils import IoU, split_output_boxes
 
 
 class YOLOv1Loss(torch.nn.Module):
@@ -22,134 +21,67 @@ class YOLOv1Loss(torch.nn.Module):
         self.loss = 0
 
     def forward(self, gt, pr):
-        exist_object = gt[..., 4].unsqueeze(-1)
-        pr_box1 = pr[..., 0:5]
-        pr_box2 = pr[..., 5:10]
+        box_present = gt[..., 4:5]
 
+        pr_box0, pr_box1 = split_output_boxes(pr)
+
+        iou_box0 = torch.unsqueeze(IoU(gt, pr_box0), dim=-1)
         iou_box1 = torch.unsqueeze(IoU(gt, pr_box1), dim=-1)
-        iou_box2 = torch.unsqueeze(IoU(gt, pr_box2), dim=-1)
 
-        ious = torch.cat((iou_box1, iou_box2), dim=-1)
-        max_iou, best_box = torch.max(ious, dim=3)
+        ious = torch.cat((iou_box0, iou_box1), dim=3)
+        _, argmax_iou = torch.max(ious, dim=3)
+        argmax_iou = argmax_iou.unsqueeze(-1)
 
-        best_box = best_box.unsqueeze(-1)
+        pred = (1 - argmax_iou) * pr_box0 + argmax_iou * pr_box1
+        loss = 0
 
-        # Find labels and preds:
-        pred_ = exist_object * ((1 - best_box) * pr_box1 + best_box * pr_box2)
-        gt_ = exist_object * gt
+        # ========================================= #
+        # Loss position x,y:
+        # ========================================= #  
+        gt_ = gt[..., 0:2]
+        pred_ = pred[..., 0:2]
+        # loss += self.mse(gt_, pred_)
 
-        # ------------------------------- #
-        # Loss x,y:
-        # ------------------------------- #
-        pred = pred_[..., 0:2]
-        gt = gt_[..., 0:2]
-        loss_1 = self.lamb_obj * self.mse(pred, gt)
-
-        # ------------------------------- #
-        # Loss w,h:
-        # ------------------------------- #
-        pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
-        gt = torch.sqrt(gt_[..., 2:4])
-        loss_2 =  self.mse(pred, gt)
-        print("="*50)
-        print("pr", pr)
-        print("pred",pred)
-        print("gt",gt)
-
-        # # ------------------------------- #
-        # # Loss obj:
-        # # ------------------------------- #
-        # pred = pred_[..., 4:5]
-        # gt = exist_object * gt_[..., 4:5]
-        # loss_3 =  self.mse(pred, gt)
-        # loss = loss_1 + loss_2 + loss_3
-
-        # print("*"*50)
-        # print("loss_1: ", loss_1)
-        # print("loss_2: ", loss_2)
-        # print("loss_3: ", loss_3)
-        # print("loss: ", loss)
-        return loss_2
-
-        # # pred_x = Iobj* ((1-best_box) * pr_box1[...,0] + best_box*pr_box2[...,0])
-        # # pred_y = Iobj* ((1-best_box) * pr_box1[...,1] + best_box*pr_box2[...,1])
-        # # gt_x = Iobj * gt[..., 0]
-        # # gt_y = Iobj * gt[..., 1]
-
-        # print("pred", pred.shape)
-        # print(pred.shape, pr_box1.shape)
-        # print(loss.shape)
-
-    # def forward(self, pr_boxes, gt_boxes):
-    #     assert gt_boxes.shape[0] == pr_boxes.shape[0], (
-    #         "GT and PR have different batch sizes!",
-    #         gt_boxes.shape[0],
-    #         pr_boxes.shape[0],
-    #     )
-    #     N_BATCHES = gt_boxes.shape[0]
-
-    #     LAMB_OBJ = 5
-    #     LAMB_NOOBJ = 0.5
-
-    #     losses = []
-    #     for n in range(N_BATCHES):
-    #         gt = gt_boxes[n, :]
-    #         pr = pr_boxes[n, :]
-
-    #         S = gt.shape[0]
-    #         loss = 0
-    #         for i in range(S):
-    #             for j in range(S):
-    #                 # Check if an object is present in the cell:
-    #                 print("The ground truth -->", gt[i, j])
-    #                 if gt[i, j, 4:].any() != 0:
-    #                     gt_box = get_box_coord(gt[i, j, :4])
-    #                     pr_box1 = get_box_coord(pr[i, j, :4])
-    #                     pr_box2 = get_box_coord(pr[i, j, 5:9])
-
-    #                     iou_box1 = IoU(gt_box, pr_box1)
-    #                     iou_box2 = IoU(gt_box, pr_box2)
-
-    #                     # Select box with highest IoU with gt:
-    #                     if iou_box1 >= iou_box2:
-    #                         pred = torch.cat((pr[i, j, :5], pr[i, j, 10:]), axis=0)
-    #                     else:
-    #                         pred = torch.cat((pr[i, j, 5:10], pr[i, j, 10:]), axis=0)
-    #                     gt_ = gt[i, j]
-
-    #                     # Compute Squared Error Loss for each component:
-    #                     # position
-    #                     loss += LAMB_OBJ * (torch.square(gt_[0] - pred[0]) + torch.square(gt_[1] - pred[1]))
-
-    #                     # dimensions
-    #                     loss += LAMB_OBJ * (
-    #                         torch.square(torch.sqrt(gt_[2]) - torch.sqrt(pred[2]))
-    #                         + torch.square(torch.sqrt(gt_[3]) - torch.sqrt(pred[3]))
-    #                     )
-
-    #                     # P(Obj) cell with obj
-    #                     loss += torch.square(1 - pred[4])
-
-    #                     # P(C_i|Obj)
-    #                     for idx in range(self.C):
-    #                         if gt_[4 + idx] == 1:
-    #                             loss += torch.square(1 - pred[5 + idx])
-    #                         else:
-    #                             loss += torch.square(0 - pred[5 + idx])
-
-    #                 else:
-    #                     # P(Obj) cell without obj
-    #                     # not clear from the paper.
-    #                     loss += LAMB_NOOBJ * torch.square(0 - pr[i, j, 4])
-    #                     loss += LAMB_NOOBJ * torch.square(0 - pr[i, j, 9])
-
-    #         # Append batch loss
-    #         loss = torch.tensor(loss)
-    #         losses.append(loss)
-
-    #     losses = torch.tensor(losses)
-    #     loss = torch.mean(losses)
-    #     return torch.tensor(loss, requires_grad=True)
+        # ========================================= #
+        # Loss position h,w:
+        # ========================================= #  
+        gt_ = torch.sqrt(torch.abs(gt[..., 2:4]))
+        pred_ = torch.sqrt(pred[..., 2:4])
+        # loss += self.mse(gt_, pred_)
 
 
-# def compute_loss(gt_boxes, pr_boxes, C=20):
+        # ========================================= #
+        # Loss obj:
+        # ========================================= #  
+        gt_ = gt[..., 4:5]
+        pred_ = pred[..., 4:5]
+        loss += self.mse(gt_, pred_)
+
+
+        # ========================================= #
+        # Loss no obj:
+        # ========================================= #  
+        gt_ = gt[..., 4:5]
+        pred_ = pred[..., 4:5]
+        loss += self.mse(gt_, pred_)
+
+
+
+        print("Loss: ", loss)
+        print("gt: ", gt_[..., 0])
+        print("pr: ", pred_[..., 0])
+
+
+
+        print("-" * 30)
+        print("box_present.shape: ", box_present.shape)
+        print("pr_box1.shape: ", pr_box1.shape)
+        print("iou_box1.shape: ", iou_box1.shape)
+        print("ious.shape: ", ious.shape)
+        print("argmax_iou.shape: ", argmax_iou.shape)
+        print("pred.shape: ", pred.shape)
+        print("gt.shape: ", gt.shape)
+        print("pred.shape: ", pred.shape)
+        print("gt_.shape: ", gt_.shape)
+        print("pred_.shape: ", pred_.shape)
+        return 0

@@ -18,7 +18,7 @@ class TestTrainer(unittest.TestCase):
     # Set up network:
     conf = read_config(conf_file="config/yolo_v1.yaml")
     trainer = Trainer(conf)
-    trainer.train_overfit()
+    trainer.train()
 
 
 if __name__ == "__main__":
