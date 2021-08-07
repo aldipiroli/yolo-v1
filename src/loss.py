@@ -22,7 +22,6 @@ class YOLOv1Loss(torch.nn.Module):
         self.loss = 0
 
     def forward(self, gt, pr):
-        self.loss = 0
         exist_object = gt[..., 4].unsqueeze(-1)
         pr_box1 = pr[..., 0:5]
         pr_box2 = pr[..., 5:10]
@@ -52,19 +51,25 @@ class YOLOv1Loss(torch.nn.Module):
         pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
         gt = torch.sqrt(gt_[..., 2:4])
         loss_2 =  self.mse(pred, gt)
+        print("="*50)
+        print("pr", pr)
+        print("pred",pred)
+        print("gt",gt)
 
-        # ------------------------------- #
-        # Loss obj:
-        # ------------------------------- #
-        pred = pred_[..., 4:5]
-        gt = exist_object * gt_[..., 4:5]
-        loss_3 =  self.mse(pred, gt)
-        self.loss = loss_1 + loss_2 + loss_3
-        print("loss_1: ", loss_1)
-        print("loss_2: ", loss_2)
-        print("loss_3: ", loss_3)
-        print("loss: ", self.loss)
-        return self.loss
+        # # ------------------------------- #
+        # # Loss obj:
+        # # ------------------------------- #
+        # pred = pred_[..., 4:5]
+        # gt = exist_object * gt_[..., 4:5]
+        # loss_3 =  self.mse(pred, gt)
+        # loss = loss_1 + loss_2 + loss_3
+
+        # print("*"*50)
+        # print("loss_1: ", loss_1)
+        # print("loss_2: ", loss_2)
+        # print("loss_3: ", loss_3)
+        # print("loss: ", loss)
+        return loss_2
 
         # # pred_x = Iobj* ((1-best_box) * pr_box1[...,0] + best_box*pr_box2[...,0])
         # # pred_y = Iobj* ((1-best_box) * pr_box1[...,1] + best_box*pr_box2[...,1])

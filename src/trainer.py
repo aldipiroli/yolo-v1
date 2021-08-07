@@ -45,22 +45,22 @@ class Trainer:
             img, label = self.dataset[3]
             img_ = img.transpose(2,0).transpose(0,1)
 
-            self.net.zero_grad()
+            self.optimizer.zero_grad()
 
             out = self.net(img.unsqueeze(0))
+            print("The output: ", out)
             label = label.unsqueeze(0)
             loss = self.loss(label, out)
-
+            print("Loss ->", loss)
             loss.backward()
             self.optimizer.step()
-            print("Loss ->", loss)
 
-            with torch.no_grad():
-                box1, box2 = split_output_boxes(out)
-                fig, ax = plot_voc2007_labels(img_,  label[0, ...])             
-                plot_voc2007_labels(img_,  box1[0, :].detach().numpy(), fig=fig, ax=ax, color="green")             
-                plt.show()
-                input("....")
+            # with torch.no_grad():
+            #     box1, box2 = split_output_boxes(out)
+            #     fig, ax = plot_voc2007_labels(img_,  label[0, ...])             
+            #     plot_voc2007_labels(img_,  box1[0, :].detach().numpy(), fig=fig, ax=ax, color="green")             
+            #     plt.show()
+            input("....")
 
 
     def train(self):
