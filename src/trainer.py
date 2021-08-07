@@ -61,6 +61,7 @@ class Trainer:
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=self.learning_rate)
 
     def train(self):
+        self.net.zero_grad()
         for epoch in range(self.N_EPOCH):
             print("\n============= Epoch: %d =============\n" % epoch)
             img, label = self.dataset[3]
@@ -70,23 +71,30 @@ class Trainer:
             label = label.unsqueeze(0)
 
             # Make a fake output:
-            out = make_fake_output(label)
-            box1, box2 = split_output_boxes(out)
+            # out = make_fake_output(label)
+            out = self.net(img)
+            # box1, box2 = split_output_boxes(out)
 
             # Compute Loss:
-            loss_val = self.loss(label, out)
+            loss = self.loss(label, out)
+
+            # Backprop:
+            # self.net.zero_grad()
+            self.optimizer.zero_grad()   # zero the gradient buffers
+            loss.backward()
+            self.optimizer.step()
 
             # Plot img and label:
-            img_ = img[0].transpose(2, 0).transpose(0, 1)
-            fig, ax = plot_voc2007_labels(img_, label[0])
-            fig, ax = plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="lime")
-            plot_voc2007_labels(img_, box2[0], fig=fig, ax=ax, color="blue")
-            plt.savefig("debug_image.png")
+            # img_ = img[0].transpose(2, 0).transpose(0, 1)
+            # fig, ax = plot_voc2007_labels(img_, label[0])
+            # fig, ax = plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="lime")
+            # plot_voc2007_labels(img_, box2[0], fig=fig, ax=ax, color="blue")
+            # plt.savefig("debug_image.png")
 
             # Debug printing:
             print("-" * 30)
             print("img.shape", img.shape)
             print("label.shape", label.shape)
             print("out.shape", out.shape)
-            print("loss_val:", loss_val)
+            print("loss_val:", loss)
             input("....")
