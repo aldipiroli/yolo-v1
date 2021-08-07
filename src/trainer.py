@@ -29,10 +29,12 @@ def make_fake_output(label):
     out[..., :4] = box_2
     out[..., 4:5] = box_present * 0.8
 
+
     out[..., 5:9] = box_1
     out[..., 9:10] = box_present * 0.3
 
     return out
+
 
 class Trainer:
     def __init__(self, conf):
@@ -63,27 +65,26 @@ class Trainer:
             print("\n============= Epoch: %d =============\n" % epoch)
             img, label = self.dataset[3]
 
-            # Make a batch: 
+            # Make a batch:
             img = img.unsqueeze(0)
             label = label.unsqueeze(0)
-            
-            # Make a fake output: 
+
+            # Make a fake output:
             out = make_fake_output(label)
             box1, box2 = split_output_boxes(out)
 
-            # Compute Loss: 
+            # Compute Loss:
             loss_val = self.loss(label, out)
 
-
             # Plot img and label:
-            img_ = img[0].transpose(2,0).transpose(0,1)
+            img_ = img[0].transpose(2, 0).transpose(0, 1)
             fig, ax = plot_voc2007_labels(img_, label[0])
             fig, ax = plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="lime")
             plot_voc2007_labels(img_, box2[0], fig=fig, ax=ax, color="blue")
-            plt.savefig('debug_image.png')
+            plt.savefig("debug_image.png")
 
-            # Debug printing:
-            print("-"*30)
+            # Debug printing:
+            print("-" * 30)
             print("img.shape", img.shape)
             print("label.shape", label.shape)
             print("out.shape", out.shape)

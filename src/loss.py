@@ -24,6 +24,9 @@ class YOLOv1Loss(torch.nn.Module):
         box_present = gt[..., 4:5]
 
         pr_box0, pr_box1 = split_output_boxes(pr)
+        pr_box0[0, 3, 4, 4] = 0.56
+        pr_box0[0, 2, 6, 4] = 0.94
+        pr_box1[0, 3, 4, 4] = 0.79
 
         iou_box0 = torch.unsqueeze(IoU(gt, pr_box0), dim=-1)
         iou_box1 = torch.unsqueeze(IoU(gt, pr_box1), dim=-1)
@@ -32,56 +35,43 @@ class YOLOv1Loss(torch.nn.Module):
         _, argmax_iou = torch.max(ious, dim=3)
         argmax_iou = argmax_iou.unsqueeze(-1)
 
-        pred = (1 - argmax_iou) * pr_box0 + argmax_iou * pr_box1
+        pred = box_present * ((1 - argmax_iou) * pr_box0 + argmax_iou * pr_box1)
         loss = 0
 
         # ========================================= #
         # Loss position x,y:
-        # ========================================= #  
+        # ========================================= #
         gt_ = gt[..., 0:2]
         pred_ = pred[..., 0:2]
-        # loss += self.mse(gt_, pred_)
+        loss += self.lamb_obj * self.mse(gt_, pred_)
 
         # ========================================= #
         # Loss position h,w:
-        # ========================================= #  
+        # ========================================= #
         gt_ = torch.sqrt(torch.abs(gt[..., 2:4]))
         pred_ = torch.sqrt(pred[..., 2:4])
-        # loss += self.mse(gt_, pred_)
-
+        loss += self.lamb_obj * self.mse(gt_, pred_)
 
         # ========================================= #
         # Loss obj:
-        # ========================================= #  
+        # ========================================= #
         gt_ = gt[..., 4:5]
         pred_ = pred[..., 4:5]
         loss += self.mse(gt_, pred_)
-
 
         # ========================================= #
         # Loss no obj:
-        # ========================================= #  
-        gt_ = gt[..., 4:5]
-        pred_ = pred[..., 4:5]
+        # ========================================= #
+        box_no_present = 1 - gt[..., 4:5]
+        pred_noobj_ = box_no_present * pr_box0[..., 4:5]
+        gt_ = torch.zeros((pred_noobj_.shape))
+        loss += self.lamb_noobj * self.mse(gt_, pred_noobj_)
+
+        # ========================================= #
+        # Loss classes:
+        # ========================================= #
+        gt_ = gt[..., 5:]
+        pred_ = pred[..., 5:]
         loss += self.mse(gt_, pred_)
 
-
-
-        print("Loss: ", loss)
-        print("gt: ", gt_[..., 0])
-        print("pr: ", pred_[..., 0])
-
-
-
-        print("-" * 30)
-        print("box_present.shape: ", box_present.shape)
-        print("pr_box1.shape: ", pr_box1.shape)
-        print("iou_box1.shape: ", iou_box1.shape)
-        print("ious.shape: ", ious.shape)
-        print("argmax_iou.shape: ", argmax_iou.shape)
-        print("pred.shape: ", pred.shape)
-        print("gt.shape: ", gt.shape)
-        print("pred.shape: ", pred.shape)
-        print("gt_.shape: ", gt_.shape)
-        print("pred_.shape: ", pred_.shape)
-        return 0
+        return loss
