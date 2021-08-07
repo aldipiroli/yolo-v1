@@ -23,7 +23,6 @@ class YOLOv1Loss(torch.nn.Module):
 
     def forward(self, gt, pr):
         self.loss = 0
-
         exist_object = gt[..., 4].unsqueeze(-1)
         pr_box1 = pr[..., 0:5]
         pr_box2 = pr[..., 5:10]
@@ -32,7 +31,7 @@ class YOLOv1Loss(torch.nn.Module):
         iou_box2 = torch.unsqueeze(IoU(gt, pr_box2), dim=-1)
 
         ious = torch.cat((iou_box1, iou_box2), dim=-1)
-        max_iou, best_box = torch.max(ious, dim=-1)
+        max_iou, best_box = torch.max(ious, dim=3)
 
         best_box = best_box.unsqueeze(-1)
 
@@ -45,22 +44,26 @@ class YOLOv1Loss(torch.nn.Module):
         # ------------------------------- #
         pred = pred_[..., 0:2]
         gt = gt_[..., 0:2]
-        self.loss += self.lamb_obj * self.mse(pred, gt)
+        loss_1 = self.lamb_obj * self.mse(pred, gt)
 
-        # # ------------------------------- #
-        # # Loss w,h:
-        # # ------------------------------- #
-        # pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
-        # gt = torch.sqrt(gt_[..., 2:4])
-        # self.loss += self.mse(pred, gt)
+        # ------------------------------- #
+        # Loss w,h:
+        # ------------------------------- #
+        pred = torch.sign(pred_[..., 2:4]) * torch.sqrt(torch.abs(pred_[..., 2:4]))
+        gt = torch.sqrt(gt_[..., 2:4])
+        loss_2 =  self.mse(pred, gt)
 
-        # # ------------------------------- #
-        # # Loss obj:
-        # # ------------------------------- #
-        # pred = pred_[..., 4:5]
-        # gt = exist_object * gt_[..., 4:5]
-        # self.loss += self.mse(pred, gt)
-        print("The loss is: ", self.loss)
+        # ------------------------------- #
+        # Loss obj:
+        # ------------------------------- #
+        pred = pred_[..., 4:5]
+        gt = exist_object * gt_[..., 4:5]
+        loss_3 =  self.mse(pred, gt)
+        self.loss = loss_1 + loss_2 + loss_3
+        print("loss_1: ", loss_1)
+        print("loss_2: ", loss_2)
+        print("loss_3: ", loss_3)
+        print("loss: ", self.loss)
         return self.loss
 
         # # pred_x = Iobj* ((1-best_box) * pr_box1[...,0] + best_box*pr_box2[...,0])

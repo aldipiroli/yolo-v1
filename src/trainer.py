@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torch import nn
 
-from src.network import YOLOv1
+from src.network import YOLOv1, weights_init
 from src.dataset import DatasetVOC2007
 from src.loss import YOLOv1Loss
 from src.utils.plot import plot_voc2007_labels
@@ -30,32 +30,37 @@ class Trainer:
         self.C = self.conf["NETWORK"]["C"]
 
         self.net = YOLOv1(self.S, self.B, self.C)
+        self.net.apply(weights_init)
 
         self.loss = YOLOv1Loss()
 
         self.learning_rate = self.conf["TRAINING"]["learning_rate"]
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=self.learning_rate)
     
-    # custom weights initialization called on netG and netD
-    def weights_init(self, m):
-        classname = m.__class__.__name__
-        if classname.find('Conv') != -1:
-            nn.init.normal_(m.weight.data, 0.0, 0.02)
-        elif classname.find('BatchNorm') != -1:
-            nn.init.normal_(m.weight.data, 1.0, 0.02)
-            nn.init.constant_(m.bias.data, 0)
+
 
     def train_overfit(self):
-        self.net.apply(self.weights_init)
         for epoch in range(self.N_EPOCH):
-            # for i, (img, label) in enumerate(self.data_loader):
+
             img, label = self.dataset[3]
             img_ = img.transpose(2,0).transpose(0,1)
+
             self.net.zero_grad()
+
             out = self.net(img.unsqueeze(0))
+            label = label.unsqueeze(0)
             loss = self.loss(label, out)
+
             loss.backward()
             self.optimizer.step()
+            print("Loss ->", loss)
+
+            with torch.no_grad():
+                box1, box2 = split_output_boxes(out)
+                fig, ax = plot_voc2007_labels(img_,  label[0, ...])             
+                plot_voc2007_labels(img_,  box1[0, :].detach().numpy(), fig=fig, ax=ax, color="green")             
+                plt.show()
+                input("....")
 
 
     def train(self):
