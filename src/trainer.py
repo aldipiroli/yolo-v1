@@ -4,6 +4,7 @@ import yaml
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torch import nn
+import torch.optim as optim
 
 from src.network import YOLOv1, weights_init
 from src.dataset import DatasetVOC2007
@@ -48,53 +49,55 @@ class Trainer:
         self.B = self.conf["NETWORK"]["B"]
         self.C = self.conf["NETWORK"]["C"]
 
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        print("TRAINING ON DEVICE: ", self.device)
+
         self.dataset = DatasetVOC2007(root_dir=self.ROOT_DIR, split="train")
         self.data_loader = DataLoader(
             self.dataset, batch_size=self.BATCH_SIZE, num_workers=self.NUM_WORKERS, shuffle=True
         )
 
-        self.net = YOLOv1(self.S, self.B, self.C)
+        self.net = YOLOv1(self.S, self.B, self.C).to(self.device)
+        #self.net = YOLO().to(self.device)
         self.net.apply(weights_init)
         self.loss = YOLOv1Loss()
 
         self.learning_rate = self.conf["TRAINING"]["learning_rate"]
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=self.learning_rate)
+        #self.optimizer = torch.optim.Adam(self.net.parameters(), lr=self.learning_rate)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=10e-5 ,weight_decay=0.0001)
+        # self.optimizer = optim.SGD(self.net.parameters(), lr=0.005)
 
     def train(self):
+        torch.autograd.set_detect_anomaly(True)
         self.net.zero_grad()
+        self.net.train()
         for epoch in range(self.N_EPOCH):
             print("\n============= Epoch: %d =============\n" % epoch)
+            self.optimizer.zero_grad()   # zero the gradient buffers
+
             img, label = self.dataset[3]
 
             # Make a batch:
-            img = img.unsqueeze(0)
-            label = label.unsqueeze(0)
+            img = img.unsqueeze(0).to(self.device)
+            label = label.unsqueeze(0).to(self.device)
 
-            # Make a fake output:
-            # out = make_fake_output(label)
             out = self.net(img)
-            # box1, box2 = split_output_boxes(out)
 
             # Compute Loss:
-            loss = self.loss(label, out)
-
-            # Backprop:
-            # self.net.zero_grad()
-            self.optimizer.zero_grad()   # zero the gradient buffers
+            loss = self.loss(label, out, self.device)
             loss.backward()
             self.optimizer.step()
+            print("Loss: ", loss)
 
             # Plot img and label:
-            # img_ = img[0].transpose(2, 0).transpose(0, 1)
-            # fig, ax = plot_voc2007_labels(img_, label[0])
-            # fig, ax = plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="lime")
-            # plot_voc2007_labels(img_, box2[0], fig=fig, ax=ax, color="blue")
-            # plt.savefig("debug_image.png")
+            with torch.no_grad():
+                img_ = img[0].cpu().transpose(2, 0).transpose(0, 1)
+                fig, ax = plot_voc2007_labels(img_, label[0].cpu())
 
-            # Debug printing:
-            print("-" * 30)
-            print("img.shape", img.shape)
-            print("label.shape", label.shape)
-            print("out.shape", out.shape)
-            print("loss_val:", loss)
-            input("....")
+                box0, box1 = split_output_boxes(out.detach())
+                fig, ax = plot_voc2007_labels(img_, box0[0], fig=fig, ax=ax, color="lime")
+                plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="blue")
+                plt.xlim([0, 500])
+                plt.ylim([0, 500])
+                plt.savefig("debug_image.png")
+                plt.close('all')

@@ -17,16 +17,13 @@ class YOLOv1Loss(torch.nn.Module):
         self.S = S
         self.lamb_obj = 5
         self.lamb_noobj = 0.5
-        self.mse = torch.nn.MSELoss(reduction="sum")
+        self.mse = torch.nn.MSELoss()
         self.loss = 0
 
-    def forward(self, gt, pr):
+    def forward(self, gt, pr, device):
         box_present = gt[..., 4:5]
 
         pr_box0, pr_box1 = split_output_boxes(pr)
-        pr_box0[0, 3, 4, 4] = 0.56
-        pr_box0[0, 2, 6, 4] = 0.94
-        pr_box1[0, 3, 4, 4] = 0.79
 
         iou_box0 = torch.unsqueeze(IoU(gt, pr_box0), dim=-1)
         iou_box1 = torch.unsqueeze(IoU(gt, pr_box1), dim=-1)
@@ -43,14 +40,14 @@ class YOLOv1Loss(torch.nn.Module):
         # ========================================= #
         gt_ = gt[..., 0:2]
         pred_ = pred[..., 0:2]
-        loss += self.lamb_obj * self.mse(gt_, pred_)
+        loss += self.lamb_obj * torch.sum((gt_ - pred_)**2)
 
         # ========================================= #
         # Loss position h,w:
         # ========================================= #
-        gt_ = torch.sqrt(torch.abs(gt[..., 2:4]))
-        pred_ = torch.sqrt(pred[..., 2:4])
-        loss += self.lamb_obj * self.mse(gt_, pred_)
+        gt_ = torch.sqrt(torch.abs(gt[..., 2:4] +  1e-8))
+        pred_ = torch.sqrt(torch.abs(pred[..., 2:4]+  1e-8))
+        loss += self.lamb_obj * torch.sum((gt_ - pred_)**2)
 
         # ========================================= #
         # Loss obj:
@@ -65,13 +62,13 @@ class YOLOv1Loss(torch.nn.Module):
         box_no_present = 1 - gt[..., 4:5]
         pred_noobj_ = box_no_present * pr_box0[..., 4:5]
         gt_ = torch.zeros((pred_noobj_.shape))
-        loss += self.lamb_noobj * self.mse(gt_, pred_noobj_)
+        loss += self.lamb_noobj * torch.sum((gt_.to(device) - pred_noobj_)**2)
 
         # ========================================= #
         # Loss classes:
         # ========================================= #
         gt_ = gt[..., 5:]
         pred_ = pred[..., 5:]
-        loss += self.mse(gt_, pred_)
+        loss += torch.sum((gt_ - pred_)**2)
 
         return loss

@@ -162,6 +162,7 @@ class DatasetVOC2007(Dataset):
 
     def __getitem__(self, index):
         image_filename = self.filenames[index]["image"]
+        print("The filename: ", image_filename)
         annotation_filename = self.filenames[index]["annotation"]
 
         img = self.load_img(image_filename)
