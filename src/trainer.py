@@ -104,4 +104,5 @@ class Trainer:
 
             # Save the model:
             MODEL_PATH = "../model/"
-            torch.save(self.net.state_dict(), MODEL_PATH)
+            MODEL_NAME = "epoch_" + str(epoch) + "_i_" + str(i)
+            torch.save(self.net.state_dict(), MODEL_PATH + MODEL_NAME)
