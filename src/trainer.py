@@ -30,7 +30,6 @@ def make_fake_output(label):
     out[..., :4] = box_2
     out[..., 4:5] = box_present * 0.8
 
-
     out[..., 5:9] = box_1
     out[..., 9:10] = box_present * 0.3
 
@@ -58,46 +57,51 @@ class Trainer:
         )
 
         self.net = YOLOv1(self.S, self.B, self.C).to(self.device)
-        #self.net = YOLO().to(self.device)
         self.net.apply(weights_init)
         self.loss = YOLOv1Loss()
 
         self.learning_rate = self.conf["TRAINING"]["learning_rate"]
-        #self.optimizer = torch.optim.Adam(self.net.parameters(), lr=self.learning_rate)
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=10e-5 ,weight_decay=0.0001)
-        # self.optimizer = optim.SGD(self.net.parameters(), lr=0.005)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=10e-5, weight_decay=0.0001)
 
     def train(self):
         torch.autograd.set_detect_anomaly(True)
         self.net.zero_grad()
         self.net.train()
+
         for epoch in range(self.N_EPOCH):
             print("\n============= Epoch: %d =============\n" % epoch)
-            self.optimizer.zero_grad()   # zero the gradient buffers
+            for i, (img, label) in enumerate(self.data_loader):
 
-            img, label = self.dataset[3]
+                # Make a batch:
+                img = img.to(self.device)
+                label = label.to(self.device)
 
-            # Make a batch:
-            img = img.unsqueeze(0).to(self.device)
-            label = label.unsqueeze(0).to(self.device)
+                print("img: ", img.shape)
+                print("label: ", label.shape)
 
-            out = self.net(img)
+                out = self.net(img)
 
-            # Compute Loss:
-            loss = self.loss(label, out, self.device)
-            loss.backward()
-            self.optimizer.step()
-            print("Loss: ", loss)
+                # Compute Loss and Optimize:
+                self.optimizer.zero_grad()  # zero the gradient buffers
+                loss = self.loss(label, out, self.device)
+                loss.backward()
+                self.optimizer.step()
 
-            # Plot img and label:
-            with torch.no_grad():
-                img_ = img[0].cpu().transpose(2, 0).transpose(0, 1)
-                fig, ax = plot_voc2007_labels(img_, label[0].cpu())
+                if i % 100 == 0:
+                    print("i: ", i, ", Loss: ", loss)
+                    # Plot a sample:
+                    with torch.no_grad():
+                        img_ = img[0].cpu().transpose(2, 0).transpose(0, 1)
+                        fig, ax = plot_voc2007_labels(img_, label[0].cpu())
 
-                box0, box1 = split_output_boxes(out.detach())
-                fig, ax = plot_voc2007_labels(img_, box0[0], fig=fig, ax=ax, color="lime")
-                plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="blue")
-                plt.xlim([0, 500])
-                plt.ylim([0, 500])
-                plt.savefig("debug_image.png")
-                plt.close('all')
+                        box0, box1 = split_output_boxes(out.detach())
+                        fig, ax = plot_voc2007_labels(img_, box0[0], fig=fig, ax=ax, color="lime")
+                        plot_voc2007_labels(img_, box1[0], fig=fig, ax=ax, color="blue")
+                        plt.xlim([0, 500])
+                        plt.ylim([0, 500])
+                        plt.savefig("../img/epoch_" + str(epoch) + "_i" + str(i) + ".png")
+                        plt.close("all")
+
+            # Save the model:
+            MODEL_PATH = "../model/"
+            torch.save(self.net.state_dict(), MODEL_PATH)
