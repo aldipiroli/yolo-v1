@@ -1,4 +1,5 @@
 """
+https://github.com/aladdinpersson/Machine-Learning-Collection/blob/master/ML/Pytorch/object_detection/YOLO/model.py
 Implementation of Yolo (v1) architecture
 with slight modification with added BatchNorm.
 """
