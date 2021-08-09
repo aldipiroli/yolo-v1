@@ -1,21 +1,19 @@
 import unittest
-import numpy as np
-import random
-import torch
-from random import randrange
+import torch 
+import random 
+import numpy as np 
 import matplotlib.pyplot as plt
 
-from src.loss import compute_loss
-from src.utils.plot import plot_boxes
+from src.utils.plot import plot_voc2007_labels
+from src.loss import YOLOv1Loss
 
-
-class TestLoss(unittest.TestCase):
-    def make_gt(self, batch_size=2, S=7, C=20, W=448, H=448, manual_input=False):
+class TestYOLOv1Loss(unittest.TestCase):
+    def make_gt(self, batch_size=5, S=7, C=20, W=448, H=448, manual_input=False):
         gts = []
 
+        counter = 0
         for _ in range(batch_size):
-            counter = 0
-            gt = np.zeros((S, S, 24))
+            gt = np.zeros((S, S, 5 + C))
 
             for i in range(S):
                 for j in range(S):
@@ -28,14 +26,16 @@ class TestLoss(unittest.TestCase):
 
                         # Create a box wit probability 0.5
                         if random.uniform(0.0, 1.0) > 0.5:
-                            gt[i, j, :4] = [x, y, w, h]
-                            rnd_cls = randrange(C)
-                            gt[i, j, 4 + rnd_cls] = 1
+                            gt[i, j, :5] = [x, y, w, h, 1]
+                            rnd_cls = random.randrange(C)
+                            gt[i, j, 5 + rnd_cls] = 1
                             counter += 1
             gts.append(gt)
-
-        return np.array(gts)
-
+        gts = np.array(gts)
+        gts = torch.from_numpy(gts)
+        print("#GT: %d" % counter)
+        return gts
+    
     def make_pr(self, gts, S=7, B=2, C=20, err=15, manual_input=False):
         prs = []
         for k in range(gts.shape[0]):
@@ -44,7 +44,7 @@ class TestLoss(unittest.TestCase):
 
             for i in range(S):
                 for j in range(S):
-                    if gt[i, j, 4:].any() != 0:
+                    if gt[i, j, 4] != 0:
                         # Box 1:
                         pr[i, j, :2] = np.clip(gt[i, j, :2] + random.uniform(-err, err), 0.1, 1)
                         pr[i, j, 2:4] = np.clip(gt[i, j, 2:4] + random.uniform(-err, err), 1, err)
@@ -56,31 +56,26 @@ class TestLoss(unittest.TestCase):
 
                         # Random class
                         pr[i, j, 10:] = 0
-                        rnd_cls = randrange(C)
+                        rnd_cls = random.randrange(C)
                         pr[i, j, 10 + rnd_cls] = 1
             prs.append(pr)
+        prs = np.array(prs)
+        prs = torch.from_numpy(prs)
+        return prs
 
-        return np.array(prs)
 
     def test_loss(self):
-        manual_input = False
-        gt = self.make_gt(manual_input=manual_input)
-        pr = self.make_pr(gt, manual_input=manual_input)
+        gt = self.make_gt()
+        pr = self.make_pr(gt)
 
-        compute_loss(gt, pr)
-
-        # # Plot GT
-        # batch_idx = 0
-        # fig, ax = plot_boxes(gt[batch_idx, :], color="red")
-
-        # # Plot Box 1
-        # pred_box = np.concatenate((pr[batch_idx, :, :, :4], pr[batch_idx, :, :, 10:]), axis=2)
-        # fig, ax = plot_boxes(pred_box, color="lime", fig=fig, ax=ax)
-
-        # # Plot Box 2
-        # pred_box = np.concatenate((pr[batch_idx, :, :, 5:9], pr[batch_idx, :, :, 10:]), axis=2)
-        # fig, ax = plot_boxes(pred_box, color="aqua", fig=fig, ax=ax)
+        loss_func = YOLOv1Loss()
+        loss = loss_func(gt, pr)
+        print("The final loss: ", loss)
+        # img = np.random.random((448, 488))
+        # fig, ax = plot_voc2007_labels(img, gt[0, :], color="lime")
+        # fig, ax = plot_voc2007_labels(img, pr[0, :], fig=fig, ax=ax)
         # plt.show()
+
 
 
 if __name__ == "__main__":

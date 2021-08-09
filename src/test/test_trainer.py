@@ -3,6 +3,7 @@ import yaml
 import torch
 
 from src.trainer import Trainer
+from src.loss import YOLOv1Loss
 
 class TestTrainer(unittest.TestCase):
     def read_config(conf_file):
@@ -17,24 +18,7 @@ class TestTrainer(unittest.TestCase):
     # Set up network:
     conf = read_config(conf_file="config/yolo_v1.yaml")
     trainer = Trainer(conf)
-
-    # Overfit network in one single example:
-    for i in range(1000):
-        # Get input ready:
-        img, label = trainer.dataset[3]
-        img = torch.unsqueeze(img, 0)
-        label = torch.unsqueeze(label, 0)
-
-        out = trainer.net(img)
-        trainer.loss(label, out)
-
-        trainer.optimizer.zero_grad()
-        loss.backward()
-        trainer.optimizer.step()
-
-
-        print("Step %d, loss %.2f" % (i, loss))
-
+    trainer.train()
 
 
 if __name__ == "__main__":

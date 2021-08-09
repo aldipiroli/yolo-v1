@@ -38,7 +38,7 @@ def label_to_onehot(name, C=20):
 
 
 class DatasetVOC2007(Dataset):
-    def __init__(self, root_dir, S=7, H=448, W=448, C=20, B=2, split="train"):
+    def __init__(self, root_dir="data/VOC2007", S=7, H=448, W=448, C=20, B=2, split="train"):
         self.S = S
         self.W = W
         self.H = H
@@ -134,7 +134,7 @@ class DatasetVOC2007(Dataset):
         return False
 
     def convert_annotation_to_label(self, annotations):
-        label = np.zeros((self.S, self.S, 4 + self.C))
+        label = np.zeros((self.S, self.S, 5 + self.C))
         STEP = self.H / 7
 
         for i in range(self.S):
@@ -155,13 +155,14 @@ class DatasetVOC2007(Dataset):
                         x, y = self.convert_coordinate_abs_rel(center_x, center_y, box)
                         w = ann_x_max - ann_x_min
                         h = ann_y_max - ann_y_min
-                        label[i, j, :4] = [x, y, w, h]
-                        label[i, j, 4:] = ann[4:]
+                        label[i, j, :5] = [x, y, w, h, 1]
+                        label[i, j, 5:] = ann[4:]
 
         return label
 
     def __getitem__(self, index):
         image_filename = self.filenames[index]["image"]
+        print("The filename: ", image_filename)
         annotation_filename = self.filenames[index]["annotation"]
 
         img = self.load_img(image_filename)

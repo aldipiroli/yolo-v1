@@ -37,6 +37,7 @@ def plot_voc2007_labels(img, annotations, fig=None, ax=None, color="red"):
     """ Plots the labels in the yolo format:
             center, height, weight
     """
+
     if fig is None and ax is None:
         fig, ax = plt.subplots()
 
@@ -51,7 +52,7 @@ def plot_voc2007_labels(img, annotations, fig=None, ax=None, color="red"):
             STEP_X = i * STEP
             STEP_Y = j * STEP
             ann = annotations[i, j, :]
-            if ann[4:].any() != 0:
+            if ann[4] != 0:
                 x = ann[0]
                 y = ann[1]
                 w = ann[2] / 2
@@ -65,4 +66,4 @@ def plot_voc2007_labels(img, annotations, fig=None, ax=None, color="red"):
                 p = np.array([p1, p2, p3, p4, p1])
                 ax.plot(p[:, 0], p[:, 1], color=color, marker="o")
 
-    plt.show()
+    return fig, ax 
