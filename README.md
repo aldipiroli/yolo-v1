@@ -13,7 +13,13 @@ Paper: https://arxiv.org/pdf/1506.02640.pdf
 
 
 ## Some Results
-Image example 
+Image example. 
+* Red: gt
+* green/blue: box1, box2 predictions
+
+
+![alt text](https://github.com/aldipiroli/yolo-v1/blob/develop/img/example.png)
+
 
 ## TODOs
 - [ ] Training scheaduler as in paper
