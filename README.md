@@ -9,9 +9,16 @@ Paper: https://arxiv.org/pdf/1506.02640.pdf
 * Export PYTHONPATH: `export PYTHONPATH=/yourpath/yolo-v1`
 
 ## Train
-`python src/test/test_trainer.py`
+* run `python src/test/test_trainer.py`
 
 
 ## Some Results
+
+
+## TODOs
+- [] Training scheaduler as in paper
+- [] Load pre-trained model
+- [] Tensorboard integration 
+- [] Fully trained models 
 
 
