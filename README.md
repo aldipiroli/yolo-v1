@@ -18,7 +18,7 @@ Image example.
 * green/blue: box1, box2 predictions
 
 
-![alt text](https://github.com/aldipiroli/yolo-v1/blob/develop/img/example.png)
+![alt text](img/example.png)
 
 
 ## TODOs
