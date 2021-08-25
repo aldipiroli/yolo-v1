@@ -6,97 +6,69 @@ from random import randrange
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
-
-from src.utils.utils import get_box_coord
-
-
-def IoU(gt, pr):
-    """
-    Intersection Box:
-    A------------------.
-    |                  |
-    |                  |
-    |                  |
-    .------------------B
-    """
-    # Compute intersection:
-    A_x = max(gt[0, 0], pr[0, 0])
-    A_y = max(gt[0, 1], pr[0, 1])
-
-    B_x = min(gt[1, 0], pr[1, 0])
-    B_y = min(gt[1, 1], pr[1, 1])
-
-    inter = (B_x - A_x) * (B_y - A_y)
-    if inter < 0:
-        return 0
-
-    # Compute union:
-    gt_area = abs((gt[1, 0] - gt[0, 0]) * (gt[1, 1] - gt[0, 1]))
-    pr_area = abs((pr[1, 0] - pr[0, 0]) * (pr[1, 1] - pr[0, 1]))
-    union = gt_area + pr_area - inter
-
-    IoU = inter / union
-
-    assert IoU >= 0 and IoU <= 1, ("Error in the IoU computation, IoU: ", IoU)
-    return IoU
+from src.utils.utils import IoU, split_output_boxes
 
 
-def compute_loss(gt_boxes, pr_boxes, C=20):
-    assert gt_boxes.shape[0] == pr_boxes.shape[0], ("GT and PR have different batch sizes!", gt_boxes.shape[0], pr_boxes.shape[0])
-    N_BATCHES = gt_boxes.shape[0]
+class YOLOv1Loss(torch.nn.Module):
+    def __init__(self, C=20, B=2, S=7):
+        super(YOLOv1Loss, self).__init__()
+        self.C = C
+        self.B = B
+        self.S = S
+        self.lamb_obj = 5
+        self.lamb_noobj = 0.5
+        self.mse = torch.nn.MSELoss()
+        self.loss = 0
 
-    LAMB_OBJ = 5
-    LAMB_NOOBJ = 0.5
+    def forward(self, gt, pr, device):
+        box_present = gt[..., 4:5]
 
-    losses = []
-    for n in range(N_BATCHES):
-        gt = gt_boxes[n, :]
-        pr = pr_boxes[n, :]
+        pr_box0, pr_box1 = split_output_boxes(pr)
 
-        S = gt.shape[0]
+        iou_box0 = torch.unsqueeze(IoU(gt, pr_box0), dim=-1)
+        iou_box1 = torch.unsqueeze(IoU(gt, pr_box1), dim=-1)
+
+        ious = torch.cat((iou_box0, iou_box1), dim=3)
+        _, argmax_iou = torch.max(ious, dim=3)
+        argmax_iou = argmax_iou.unsqueeze(-1)
+
+        pred = box_present * ((1 - argmax_iou) * pr_box0 + argmax_iou * pr_box1)
         loss = 0
-        for i in range(S):
-            for j in range(S):
-                # Check if an object is present in the cell:
-                if gt[i, j, 4:].any() != 0:
-                    gt_box = get_box_coord(gt[i, j, :4])
-                    pr_box1 = get_box_coord(pr[i, j, :4])
-                    pr_box2 = get_box_coord(pr[i, j, 5:9])
 
-                    iou_box1 = IoU(gt_box, pr_box1)
-                    iou_box2 = IoU(gt_box, pr_box2)
+        # ========================================= #
+        # Loss position x,y:
+        # ========================================= #
+        gt_ = gt[..., 0:2]
+        pred_ = pred[..., 0:2]
+        loss += self.lamb_obj * torch.sum((gt_ - pred_)**2)
 
-                    # Select box with highest IoU with gt:
-                    if iou_box1 >= iou_box2:
-                        pred = np.concatenate((pr[i, j, :5], pr[i, j, 10:]), axis=0)
-                    else:
-                        pred = np.concatenate((pr[i, j, 5:10], pr[i, j, 10:]), axis=0)
-                    gt_ = gt[i, j]
+        # ========================================= #
+        # Loss position h,w:
+        # ========================================= #
+        gt_ = torch.sqrt(torch.abs(gt[..., 2:4] +  1e-8))
+        pred_ = torch.sqrt(torch.abs(pred[..., 2:4]+  1e-8))
+        loss += self.lamb_obj * torch.sum((gt_ - pred_)**2)
 
-                    # Compute Squared Error Loss for each component:
-                    # position
-                    loss += LAMB_OBJ * (np.square(gt_[0] - pred[0]) + np.square(gt_[1] - pred[1]))
+        # ========================================= #
+        # Loss obj:
+        # ========================================= #
+        gt_ = gt[..., 4:5]
+        pred_ = pred[..., 4:5]
+        loss += self.mse(gt_, pred_)
 
-                    # dimensions
-                    loss += LAMB_OBJ * (np.square(np.sqrt(gt_[2]) - np.sqrt(pred[2])) + np.square(np.sqrt(gt_[3]) - np.sqrt(pred[3])))
+        # ========================================= #
+        # Loss no obj:
+        # ========================================= #
+        box_no_present = 1 - gt[..., 4:5]
+        pred_noobj_ = box_no_present * pr_box0[..., 4:5]
+        gt_ = torch.zeros((pred_noobj_.shape))
+        loss += self.lamb_noobj * torch.sum((gt_.to(device) - pred_noobj_)**2)
 
-                    # P(Obj) cell with obj
-                    loss += np.square(1 - pred[4])
+        # ========================================= #
+        # Loss classes:
+        # ========================================= #
+        gt_ = gt[..., 5:]
+        pred_ = pred[..., 5:]
+        loss += torch.sum((gt_ - pred_)**2)
 
-                    # P(C_i|Obj)
-                    for idx in range(C):
-                        if gt_[4 + idx] == 1:
-                            loss += np.square(1 - pred[5 + idx])
-                        else:
-                            loss += np.square(0 - pred[5 + idx])
-
-                else:
-                    # P(Obj) cell without obj
-                    # not clear from the paper.
-                    loss += LAMB_NOOBJ * np.square(0 - pr[i, j, 4])
-                    loss += LAMB_NOOBJ * np.square(0 - pr[i, j, 9])
-
-        # Append batch loss
-        losses.append(loss)
-
-    return losses
+        return loss

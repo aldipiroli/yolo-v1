@@ -1,5 +1,5 @@
 # YOLO-v1
-Form sractch implementation of the YOLO-v1 algorithm. 
+Form sractch implementation of the YOLO-v1 object detection algorithm. 
 
 Paper: https://arxiv.org/pdf/1506.02640.pdf
 
@@ -9,9 +9,24 @@ Paper: https://arxiv.org/pdf/1506.02640.pdf
 * Export PYTHONPATH: `export PYTHONPATH=/yourpath/yolo-v1`
 
 ## Train
-`python src/test/test_trainer.py`
+* Run `python src/test/test_trainer.py`
 
 
 ## Some Results
+Image example. 
+* Red: gt
+* green/blue: box1, box2 predictions
+
+
+![alt text](https://github.com/aldipiroli/yolo-v1/blob/develop/img/example.png)
+
+
+## TODOs
+- [ ] Training scheaduler as in paper
+- [ ] Load pre-trained model
+- [ ] Tensorboard integration 
+- [ ] Provide fully trained model
+
+
 
 
